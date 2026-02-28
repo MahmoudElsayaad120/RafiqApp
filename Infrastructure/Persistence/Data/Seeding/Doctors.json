@@ -1,0 +1,16 @@
+[
+    {
+        
+        "UserId": 1,
+        "Specialization": "Cardiology",
+        "Description": "Specialist in heart diseases",
+        "Price": 500.0
+    },
+    {
+        
+        "UserId": 2,
+        "Specialization": "Dermatology",
+        "Description": "Skin and cosmetic specialist",
+        "Price": 350.0
+    }
+]

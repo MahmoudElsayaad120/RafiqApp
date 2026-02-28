@@ -1,0 +1,16 @@
+[
+    {
+        
+        "UserId": 3,
+        "Message": "I have chest pain, what should I do?",
+        "Sender": "Patient",
+        "CreatedAt": "2026-02-20T08:00:00Z"
+    },
+    {
+        
+        "UserId": 3,
+        "Message": "Please visit a cardiologist as soon as possible.",
+        "Sender": "Bot",
+        "CreatedAt": "2026-02-20T08:01:00Z"
+    }
+]

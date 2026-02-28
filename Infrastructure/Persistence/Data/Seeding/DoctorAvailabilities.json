@@ -1,0 +1,23 @@
+[
+    {
+        
+        "DoctorId": 1,
+        "DayOfWeek": 1,
+        "FromTime": "09:00:00",
+        "ToTime": "13:00:00"
+    },
+    {
+        
+        "DoctorId": 1,
+        "DayOfWeek": 3,
+        "FromTime": "14:00:00",
+        "ToTime": "18:00:00"
+    },
+    {
+        
+        "DoctorId": 2,
+        "DayOfWeek": 2,
+        "FromTime": "10:00:00",
+        "ToTime": "15:00:00"
+    }
+]

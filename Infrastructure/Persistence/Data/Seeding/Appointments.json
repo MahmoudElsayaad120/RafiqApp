@@ -1,0 +1,16 @@
+[
+    {
+        
+        "DoctorId": 1,
+        "PatientId": 1,
+        "Date": "2026-02-25T10:00:00",
+        "Status": "Confirmed"
+    },
+    {
+        
+        "DoctorId": 2,
+        "PatientId": 2,
+        "Date": "2026-02-26T12:00:00",
+        "Status": "Pending"
+    }
+]
