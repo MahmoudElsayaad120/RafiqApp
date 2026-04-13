@@ -5,13 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Domain.Models;
 using Persistence.Data;
-using Rafeeq.Api.DTOs;
-using Rafeeq.Api.Services;
+using Rafiq.Api.DTOs;
+using Rafiq.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
-namespace Services
+namespace Rafiq.Api.Services
 {
-    internal class AppointmentService : IAppointmentService
+    public class AppointmentService : IAppointmentService
     {
         private readonly RafiqDbContext _context;
 

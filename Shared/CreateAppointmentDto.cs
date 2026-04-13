@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Rafeeq.Api.DTOs;
+namespace Rafiq.Api.DTOs;
 
 public class CreateAppointmentDto
 {

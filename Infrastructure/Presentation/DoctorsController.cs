@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Rafeeq.Api.DTOs;
-using Rafeeq.Api.Services;
+using Rafiq.Api.DTOs;
+using Rafiq.Api.Services;
 using Microsoft.Extensions.Logging;
 
 
-namespace Rafeeq.Api.Controllers;
+namespace Rafiq.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -22,11 +22,11 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<DoctorDto>>> GetDoctors([FromQuery] string? specialization)
+    public async Task<ActionResult<IEnumerable<DoctorDto>>> GetAllDoctors([FromQuery] string? specialization,int pageIndex =1,int pageSize =5)
     {
         try
         {
-            var doctors = await _doctorService.GetAllDoctorsAsync(specialization);
+            var doctors = await _doctorService.GetAllDoctorsAsync(specialization,pageIndex,pageSize);
             return Ok(doctors);
         }
         catch (Exception ex)

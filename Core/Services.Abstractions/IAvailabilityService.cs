@@ -1,6 +1,6 @@
-using Rafeeq.Api.DTOs;
+using Rafiq.Api.DTOs;
 
-namespace Rafeeq.Api.Services;
+namespace Rafiq.Api.Services;
 
 public interface IAvailabilityService
 {

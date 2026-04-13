@@ -2,14 +2,14 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Rafeeq.Api.DTOs;
-using Rafeeq.Api.Services;
+using Rafiq.Api.DTOs;
+using Rafiq.Api.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Persistence.Data;
 
 
-namespace Rafeeq.Api.Controllers;
+namespace Rafiqeq.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

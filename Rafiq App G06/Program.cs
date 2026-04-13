@@ -1,10 +1,20 @@
 
 using System.Threading.Tasks;
 using Domain.Contracts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Persistence;
 using Persistence.Data;
+using Rafiq.Api.Services;
+using Rafiq_App_G06.Extensions;
+using Rafiq_App_G06.Middlewares;
+using Shared.ErrorModels;
+
+
+
 
 namespace Rafiq_App_G06
 {
@@ -16,49 +26,17 @@ namespace Rafiq_App_G06
 
             // Add services to the container.
 
-            builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            builder.Services.AddDbContext<RafiqDbContext>(options => 
-            {
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-
-            });
-            builder.Services.AddScoped<IDbInitializer, DbInitializer>();//allow di for DbInitializer
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            //builder.Services.addautomapper(typeof().Assembly);
-
+            builder.Services.RegisterAllServices(builder.Configuration);
 
             var app = builder.Build();
 
-            #region Seeding
 
-            using var scope = app.Services.CreateScope();
-            var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();//ask clr create object from DbInitializer
-            await dbInitializer.InitializeAsync();
-
-            #endregion  
-
-
-            //Code
 
 
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
 
-            app.UseHttpsRedirection();
-
-            app.UseAuthorization();
-
-
-            app.MapControllers();
+           await app.configureMiddlewares();
 
             app.Run();
         }

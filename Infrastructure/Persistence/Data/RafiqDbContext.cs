@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Domain.Models;
+using Domain.Models.OrderModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace Persistence.Data
@@ -14,7 +15,13 @@ namespace Persistence.Data
         public RafiqDbContext(DbContextOptions<RafiqDbContext> options)
         : base(options)
         {
+
         }
+
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+
+
 
         public DbSet<User> Users { get; set; }
         public DbSet<Patient> Patients { get; set; }
@@ -25,8 +32,7 @@ namespace Persistence.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            //modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(RafiqDbContext).Assembly);
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(assemblyReference).Assembly);
             base.OnModelCreating(modelBuilder);
 
             // User configuration
@@ -97,8 +103,8 @@ namespace Persistence.Data
                       .OnDelete(DeleteBehavior.Cascade);
                 entity.Property(e => e.Sender).HasMaxLength(50);
             });
-            //modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-            //modelBuilder.ApplyConfigurationsFromAssembly(typeof(RafiqDbContext).Assembly);
+          
+          
 
         }
     }

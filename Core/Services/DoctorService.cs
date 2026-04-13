@@ -6,26 +6,31 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Domain.Contracts;
 using Domain.Models;
-using Rafeeq.Api.DTOs;
-using Rafeeq.Api.Services;
+using Rafiq.Api.DTOs;
+using Rafiq.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Services.Specifications;
 
-namespace Services
+namespace Rafiq.Api.Services
 {
     public class DoctorService(IUnitOfWork unitOfWork , IMapper mapper) : IDoctorService
     {
         private readonly IUnitOfWork unitOfWork = unitOfWork;
 
-        public async Task<IEnumerable<DoctorDto>> GetAllDoctorsAsync(string? specialization = null)
+        
+        public async Task<IEnumerable<DoctorDto>> GetAllDoctorsAsync(string? specialization = null, int pageIndex = 1, int pageSize = 5)
         {
-          var doctors = await  unitOfWork.GetRepository<Doctor, int>().GetAllAsyns();
+            var specification = new BaseSpecifications<Doctor, int>(null);
+
+            var doctors = await  unitOfWork.GetRepository<Doctor, int>().GetAllAsyns(specification);
            var result = mapper.Map<IEnumerable<DoctorDto>>(doctors);
             return result;
         }
 
         public async Task<DoctorDto?> GetDoctorByIdAsync(int id)
         {
-           var doctor = await unitOfWork.GetRepository<Doctor, int>().GetAsyns(id);
+            var specification = new DoctorSpecifications(id);
+           var doctor = await unitOfWork.GetRepository<Doctor, int>().GetAsyns(specification);
             if (doctor is null) return null;
 
            var result = mapper.Map<DoctorDto>(doctor);

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Persistence.Data;
-using Rafeeq.Api.DTOs;
-using Rafeeq.Api.Services;
+using Rafiq.Api.DTOs;
+using Rafiq.Api.Services;
 
-namespace Services
+namespace Rafiq.Api.Services
 {
     public class AvailabilityService : IAvailabilityService
     {

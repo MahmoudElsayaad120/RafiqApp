@@ -1,4 +1,4 @@
-namespace Rafeeq.Api.DTOs;
+namespace Rafiq.Api.DTOs;
 
 public class DoctorDto
 {

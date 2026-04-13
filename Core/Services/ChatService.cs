@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 using Domain.Contracts;
 using Domain.Models;
 using Microsoft.Extensions.Logging;
-using Rafeeq.Api.DTOs;
-using Rafeeq.Api.Services;
+using Rafiq.Api.DTOs;
+using Rafiq.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
-namespace Services
+namespace Rafiq.Api.Services
 {
     public class ChatService : IChatService
     {
@@ -21,7 +21,7 @@ namespace Services
 
         private readonly IUnitOfWork unitOfWork;
         private readonly ILogger<ChatService> _logger;
-       
+
 
         public ChatService( ILogger<ChatService> logger)
         {
