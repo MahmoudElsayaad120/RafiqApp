@@ -21,7 +21,7 @@ using Rafiq.Api.Services.Abstractions;
 using Shared;
 using Shared.OrderModels;
 
-namespace Rafiq.Api.Services
+namespace Services
 {
     public class AuthService(
         UserManager<AppUser> userManager, 

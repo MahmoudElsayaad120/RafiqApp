@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Rafiq.Api.DTOs;
-using Rafiq.Api.Services;
+using Rafiq.Api.Services.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Persistence.Data;

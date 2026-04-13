@@ -10,8 +10,9 @@ using Rafiq.Api.DTOs;
 using Rafiq.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Services.Specifications;
+using Rafiq.Api.Services.Abstractions;
 
-namespace Rafiq.Api.Services
+namespace Services
 {
     public class DoctorService(IUnitOfWork unitOfWork , IMapper mapper) : IDoctorService
     {

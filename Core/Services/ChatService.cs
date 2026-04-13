@@ -9,8 +9,9 @@ using Microsoft.Extensions.Logging;
 using Rafiq.Api.DTOs;
 using Rafiq.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Rafiq.Api.Services.Abstractions;
 
-namespace Rafiq.Api.Services
+namespace Services
 {
     public class ChatService : IChatService
     {

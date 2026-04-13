@@ -1,6 +1,6 @@
 using Rafiq.Api.DTOs;
 
-namespace Rafiq.Api.Services;
+namespace Rafiq.Api.Services.Abstractions;
 
 public interface IAppointmentService
 {

@@ -10,9 +10,9 @@ using Microsoft.IdentityModel.Tokens;
 using Persistence;
 using Persistence.Data;
 using Persistence.Identity;
-using Rafiq.Api.Services;
 using Rafiq.Api.Services.Abstractions;
 using Rafiq_App_G06.Middlewares;
+using Services;
 using Shared;
 using Shared.ErrorModels;
 
@@ -39,8 +39,9 @@ namespace Rafiq_App_G06.Extensions
 
             services.AddInfrastructureservices(configuration);
             services.AddIdentityServices();
-            //services.AddScoped<IAuthService, Rafiq.Api.Services.>();
-            //builder.Services.AddAutomapper(typeof(AssemblyService).Assembly);
+            services.AddScoped<IAuthService, AuthService>();
+            //services.AddScoped<IDoctorService, DoctorService>();
+            //services.AddAutoMapper();
             services.ConfigureJwtServices(configuration);
 
             services.AddCors(config => 
