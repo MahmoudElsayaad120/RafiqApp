@@ -8,13 +8,10 @@ namespace Domain.Models
 {
     public class ChatMessage : BaseEntity<int>
     {
-        //public int Id { get; set; }
-        public int UserId { get; set; }
         public string Message { get; set; } = string.Empty;
         public string Sender { get; set; } = string.Empty; // "Patient" or "Bot"
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation properties
-        public User User { get; set; } = null!;
     }
 }

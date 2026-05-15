@@ -1,99 +1,160 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Domain.Contracts;
 using Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Persistence.Data;
 using Rafiq.Api.DTOs;
-using Rafiq.Api.Services;
 using Rafiq.Api.Services.Abstractions;
+using Shared;
 
 namespace Services
 {
     public class AvailabilityService : IAvailabilityService
     {
         private readonly RafiqDbContext _context;
+        private readonly IUnitOfWork unitOfWork;
 
-        public AvailabilityService(RafiqDbContext context)
+        public AvailabilityService(RafiqDbContext context, IUnitOfWork unitOfWork)
         {
             _context = context;
+            unitOfWork = unitOfWork;
         }
 
-        public async Task<AvailabilityDto> AddAvailabilityAsync(int doctorId, AvailabilityDto availabilityDto)
+        public async Task AddAvailabilityAsync(int doctorId, AvailabilityDto availabilityDto)
         {
-            // Verify doctor exists
             var doctor = await _context.Doctors.FindAsync(doctorId);
             if (doctor == null)
                 throw new InvalidOperationException("Doctor not found");
 
-            // Validate time range
             if (availabilityDto.FromTime >= availabilityDto.ToTime)
                 throw new InvalidOperationException("FromTime must be before ToTime");
 
-            // Check for overlapping availability
-            var overlapping = await _context.DoctorAvailabilities
-                .AnyAsync(a => a.DoctorId == doctorId &&
-                              a.DayOfWeek == availabilityDto.DayOfWeek &&
-                              ((availabilityDto.FromTime >= a.FromTime && availabilityDto.FromTime < a.ToTime) ||
-                               (availabilityDto.ToTime > a.FromTime && availabilityDto.ToTime <= a.ToTime) ||
-                               (availabilityDto.FromTime <= a.FromTime && availabilityDto.ToTime >= a.ToTime)));
-            
+            var result = new List<AvailabilityDto>();
 
-            if (overlapping)
-                throw new InvalidOperationException("This time slot overlaps with existing availability");
+            var start = availabilityDto.FromTime;
+            var end = availabilityDto.ToTime;
 
-            var availability = new DoctorAvailability
+            while (start < end)
             {
-                DoctorId = doctorId,
-                DayOfWeek = availabilityDto.DayOfWeek,
-                FromTime = availabilityDto.FromTime,
-                ToTime = availabilityDto.ToTime
-            };
+                var slotEnd = start.Add(TimeSpan.FromMinutes(30));
 
-            _context.DoctorAvailabilities.Add(availability);
+                // تأكد إننا مش بنعدي ToTime
+                if (slotEnd > end)
+                    slotEnd = end;
+
+                // Check overlapping لكل Slot
+                var overlapping = await _context.DoctorAvailabilities.AnyAsync(a =>
+                    a.DoctorId == doctorId &&
+                    a.SpecificDate == availabilityDto.SpecificDate &&
+                    ((start >= a.FromTime && start < a.ToTime) ||
+                     (slotEnd > a.FromTime && slotEnd <= a.ToTime)));
+
+                if (!overlapping)
+                {
+                    var availability = new DoctorAvailability
+                    {
+                        DoctorId = doctorId,
+                        SpecificDate = availabilityDto.SpecificDate,
+                        FromTime = start,
+                        ToTime = slotEnd
+                    };
+
+                    _context.DoctorAvailabilities.Add(availability);
+
+                    result.Add(new AvailabilityDto
+                    {
+                        SpecificDate = availability.SpecificDate,
+                        FromTime = availability.FromTime,
+                        ToTime = availability.ToTime
+                    });
+                }
+
+                start = slotEnd;
+            }
+
             await _context.SaveChangesAsync();
-
-            return new AvailabilityDto
-            {
-                Id = availability.Id,
-                DoctorId = availability.DoctorId,
-                DayOfWeek = availability.DayOfWeek,
-                FromTime = availability.FromTime,
-                ToTime = availability.ToTime
-            };
         }
 
-        public async Task<IEnumerable<AvailabilityDto>> GetDoctorAvailabilitiesAsync(int doctorId)
+        public async Task<IEnumerable<AvailabilityToReturnDto>> GetDoctorAvailabilitiesAsync(int doctorId, DateOnly date)
         {
             var availabilities = await _context.DoctorAvailabilities
-                .Where(a => a.DoctorId == doctorId)
-                .OrderBy(a => a.DayOfWeek)
+                .Where(a => a.DoctorId == doctorId && a.SpecificDate == date)
+                .OrderBy(a => a.SpecificDate)
                 .ThenBy(a => a.FromTime)
                 .ToListAsync();
 
-            return availabilities.Select(a => new AvailabilityDto
+            return availabilities.Select(a => new AvailabilityToReturnDto
             {
                 Id = a.Id,
-                DoctorId = a.DoctorId,
-                DayOfWeek = a.DayOfWeek,
+                SpecificDate = a.SpecificDate,
                 FromTime = a.FromTime,
                 ToTime = a.ToTime
             });
         }
 
-        public async Task<bool> DeleteAvailabilityAsync(int availabilityId, int doctorId)
-        {
-            var availability = await _context.DoctorAvailabilities
-                .FirstOrDefaultAsync(a => a.Id == availabilityId && a.DoctorId == doctorId);
+        //public async Task<bool> DeleteAvailabilityAsync(int availabilityId, int doctorId)
+        //{
+        //    var availability = await _context.DoctorAvailabilities
+        //        .FirstOrDefaultAsync(a => a.Id == availabilityId && a.DoctorId == doctorId);
 
-            if (availability == null)
-                return false;
+        //    if (availability == null)
+        //        return false;
+
+        //    _context.DoctorAvailabilities.Remove(availability);
+        //    await _context.SaveChangesAsync();
+        //    return true;
+        //}
+
+        public async Task<bool> DeleteFullDayAvailabilityAsync(int doctorId, DateOnly date)
+        {
+            // الحصول على يوم الأسبوع من التاريخ المرسل
+            var dayOfWeek = date.DayOfWeek;
+
+            var availabilities = await _context.DoctorAvailabilities
+                .Where(a => a.DoctorId == doctorId && a.SpecificDate == date)
+                .ToListAsync();
+
+            if (!availabilities.Any()) return false;
+
+            _context.DoctorAvailabilities.RemoveRange(availabilities);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteFulltimeAvailabilityAsync(int id)
+        {
+            //  delete doctorAvailibility By Id
+            var availability = await _context.DoctorAvailabilities.FindAsync(id);
+            if (availability == null) return false;
 
             _context.DoctorAvailabilities.Remove(availability);
             await _context.SaveChangesAsync();
+
             return true;
+        }
+
+        public async Task UpdateAvailabilityAsync(int id, UpdateAvailibilityDto availabilityDto)
+        {
+            var availability = await _context.DoctorAvailabilities.FirstOrDefaultAsync(a => a.Id == id);
+            if (availability == null)
+                throw new InvalidOperationException("Availability not found");
+
+            // Check overlapping
+            var overlapping = await _context.DoctorAvailabilities.AnyAsync(a =>
+                a.Id != id &&
+                a.DoctorId == availability.DoctorId &&
+                a.SpecificDate == availability.SpecificDate &&
+                ((availabilityDto.FromTime >= a.FromTime && availabilityDto.FromTime < a.ToTime) ||
+                 (availabilityDto.FromTime.Add(TimeSpan.FromMinutes(30)) > a.FromTime && availabilityDto.FromTime.Add(TimeSpan.FromMinutes(30)) <= a.ToTime)));
+
+            if (overlapping)
+                throw new InvalidOperationException("The updated time slot overlaps with an existing availability");
+
+            availability.FromTime = availabilityDto.FromTime;
+            availability.ToTime = availabilityDto.FromTime.Add(TimeSpan.FromMinutes(30));
+
+            //unitOfWork.GetRepository<DoctorAvailability, int>().Update(availability);
+            _context.DoctorAvailabilities.Update(availability);
+            await _context.SaveChangesAsync();    
         }
     }
 }

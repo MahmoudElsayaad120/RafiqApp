@@ -15,20 +15,16 @@ namespace Services
 {
     public class ChatService : IChatService
     {
-        public ChatService(IUnitOfWork unitOfWork)
+        public ChatService(IUnitOfWork unitOfWork, ILogger<ChatService> logger)
         {
             this.unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         private readonly IUnitOfWork unitOfWork;
         private readonly ILogger<ChatService> _logger;
 
 
-        public ChatService( ILogger<ChatService> logger)
-        {
-          
-            _logger = logger;
-        }
 
         public async Task<ChatResponseDto> ProcessMessageAsync(int userId, string message)
         {
@@ -56,13 +52,13 @@ namespace Services
         {
             var chatMessage = new ChatMessage
             {
-                UserId = userId,
+                //UserId = userId,
                 Message = message,
                 Sender = sender,
                 CreatedAt = DateTime.UtcNow
             };
 
-           var chat = unitOfWork.GetRepository<ChatMessage,int>().AddAsyns(chatMessage);
+           var chat = unitOfWork.GetRepository<ChatMessage,int>().AddAsync(chatMessage);
             await unitOfWork.SaveChangesAsync();
         }
 

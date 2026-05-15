@@ -31,12 +31,9 @@ namespace Rafiq_App_G06
             var app = builder.Build();
 
 
-
-
-
             // Configure the HTTP request pipeline.
 
-           await app.configureMiddlewares();
+            await app.configureMiddlewares();
 
             app.Run();
         }

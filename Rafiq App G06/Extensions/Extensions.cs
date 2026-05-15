@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using AutoMapper;
 using Domain.Contracts;
 using Domain.Models.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Persistence;
 using Persistence.Data;
@@ -13,8 +15,12 @@ using Persistence.Identity;
 using Rafiq.Api.Services.Abstractions;
 using Rafiq_App_G06.Middlewares;
 using Services;
+using Services.Abstractions;
+using Services.MappingProfiles;
 using Shared;
 using Shared.ErrorModels;
+
+
 
 namespace Rafiq_App_G06.Extensions
 {
@@ -22,13 +28,11 @@ namespace Rafiq_App_G06.Extensions
     {
         public static IServiceCollection RegisterAllServices(this IServiceCollection services, IConfiguration configuration)
         {
-
             services.AddBuiltInServices();
             services.AddSwaggerServices();
             services.ConfigureServices();
 
-
-
+            
             services.AddDbContext<RafiqDbContext>(options =>
             {
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
@@ -37,24 +41,35 @@ namespace Rafiq_App_G06.Extensions
             services.AddScoped<IDbInitializer, DbInitializer>();//allow di for DbInitializer
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+            
+            services.AddAutoMapper(cfg =>
+            {
+                cfg.AddMaps(System.AppDomain.CurrentDomain.GetAssemblies());
+            });
+            services.AddScoped<IServiceManager, ServiceManager>();
             services.AddInfrastructureservices(configuration);
-            services.AddIdentityServices();
-            services.AddScoped<IAuthService, AuthService>();
-            //services.AddScoped<IDoctorService, DoctorService>();
-            //services.AddAutoMapper();
-            services.ConfigureJwtServices(configuration);
 
+            
+            services.AddIdentityServices();
+            services.AddScoped<IAuthService, AuthService>(); 
+            services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<IAvailabilityService, AvailabilityService>();
+            services.AddScoped<IChatService, ChatService>();
+            services.AddScoped<IDoctorService, DoctorService>();
+            services.AddScoped<IArticleService, ArticleService>();
+
+
+            services.ConfigureJwtServices(configuration);
             services.AddCors(config => 
             {
                 config.AddPolicy("MyPolicy", options => 
                 {
-                    options.WithOrigins()
+                    options.WithOrigins("http://localhost:5174")
                            .AllowAnyMethod()
-                           .AllowAnyHeader();
+                           .AllowAnyHeader()
+                           .AllowCredentials();
                 });
             });
-
-
             return services;
         }
 
@@ -69,7 +84,6 @@ namespace Rafiq_App_G06.Extensions
         }
         private static IServiceCollection ConfigureJwtServices(this IServiceCollection services, IConfiguration configuration)
         {
-
             var jwtOptions = configuration.GetSection("JwtOptions").Get<JwtOptions>();
             services.AddAuthentication(options =>
             {
@@ -93,7 +107,6 @@ namespace Rafiq_App_G06.Extensions
 
             return services;
         }
-
         private static IServiceCollection AddIdentityServices(this IServiceCollection services)
         {
             services.AddIdentity<AppUser, IdentityRole>()
@@ -101,8 +114,6 @@ namespace Rafiq_App_G06.Extensions
      
             return services;
         }
-
-
         private static IServiceCollection AddSwaggerServices(this IServiceCollection services)
         {
 
@@ -112,10 +123,8 @@ namespace Rafiq_App_G06.Extensions
 
             return services;
         }
-
         private static IServiceCollection ConfigureServices(this IServiceCollection services)
         {
-
             services.Configure<ApiBehaviorOptions>(config =>
             {
                 config.InvalidModelStateResponseFactory = (actionContext) =>
@@ -147,8 +156,6 @@ namespace Rafiq_App_G06.Extensions
 
 
             //Code
-
-
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -157,6 +164,7 @@ namespace Rafiq_App_G06.Extensions
 
 
             app.UseCors("MyPolicy");
+            app.UseStaticFiles();
             app.UseHttpsRedirection();
 
             app.UseAuthentication();
@@ -182,10 +190,8 @@ namespace Rafiq_App_G06.Extensions
             return app;
 
         }
-
         private static WebApplication UseGlobalErrorHanding(this WebApplication app)
-        {
-
+        { 
             app.UseMiddleware<GlobalErrorHandingMiddleware>();
 
             return app;

@@ -23,6 +23,9 @@ namespace Persistence
             if (specifications.Criteria is not null)
               query =  query.Where(specifications.Criteria);
 
+            if (specifications.OrderByDescending is not null)
+                query = query.OrderByDescending(specifications.OrderByDescending);
+
             if (specifications.IsPageination)
                 query = query.Skip(specifications.Skip).Take(specifications.Take);
 

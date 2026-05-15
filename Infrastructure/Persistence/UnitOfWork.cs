@@ -15,11 +15,14 @@ namespace Persistence
         private readonly RafiqDbContext context;
         private readonly Dictionary<string, object> _repositories;
 
+
         public UnitOfWork(RafiqDbContext context)
         {
             this.context = context;
             _repositories = new Dictionary<string, object>();
         }
+
+
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>() where TEntity : BaseEntity<TKey>
         {
             var type = typeof(TEntity).Name;
@@ -32,6 +35,11 @@ namespace Persistence
         }
 
         public async Task<int> SaveChangesAsync()
+        {
+            return await context.SaveChangesAsync();
+        }
+
+        public async Task<int> CompleteAsync()
         {
             return await context.SaveChangesAsync();
         }

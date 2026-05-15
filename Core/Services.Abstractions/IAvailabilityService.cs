@@ -1,10 +1,15 @@
 using Rafiq.Api.DTOs;
+using Shared;
 
 namespace Rafiq.Api.Services.Abstractions;
 
 public interface IAvailabilityService
 {
-    Task<AvailabilityDto> AddAvailabilityAsync(int doctorId, AvailabilityDto availabilityDto);
-    Task<IEnumerable<AvailabilityDto>> GetDoctorAvailabilitiesAsync(int doctorId);
-    Task<bool> DeleteAvailabilityAsync(int availabilityId, int doctorId);
+    Task AddAvailabilityAsync(int doctorId, AvailabilityDto availabilityDto);
+    Task<IEnumerable<AvailabilityToReturnDto>> GetDoctorAvailabilitiesAsync(int doctorId, DateOnly date);
+    Task<bool> DeleteFullDayAvailabilityAsync(int doctorId, DateOnly date);
+    Task<bool> DeleteFulltimeAvailabilityAsync(int id);
+    Task UpdateAvailabilityAsync(int id, UpdateAvailibilityDto availabilityDto);
+
+
 }

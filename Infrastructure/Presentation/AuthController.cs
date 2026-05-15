@@ -4,8 +4,9 @@ using Rafiq.Api.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using Shared.OrderModels;
 using Rafiq.Api.Services.Abstractions;
+using Microsoft.AspNetCore.Identity;
+using Domain.Models.Identity;
 
 
 namespace Rafiq.Api.Controllers;
@@ -14,17 +15,23 @@ namespace Rafiq.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
+    private readonly UserManager<AppUser> _userManager;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(
+        IAuthService authService,
+        ILogger<AuthController> logger,
+        UserManager<AppUser> userManager)
     {
         _authService = authService;
         _logger = logger;
+        _userManager = userManager;
     }
 
 
-    [HttpPost("login")]
+    [HttpPost("login")] 
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto loginDto)
     {
         try
@@ -77,25 +84,6 @@ public class AuthController : ControllerBase
         var result = await _authService.GetCurrentUserAsync(email);
         return Ok(result);
     }
-
-    [HttpGet("Address")]
-    [Authorize]
-    public async Task<IActionResult> GetCurrentUserAddress()
-    {
-        var email = User.FindFirstValue(ClaimTypes.Email);
-        var result = await _authService.GetCurrentUserAddressAsync(email);
-        return Ok(result);
-    }
-
-    [HttpPut("Address")]
-    [Authorize]
-    public async Task<IActionResult> UpdateCurrentUserAddress(addressDto addressDto)
-    {
-        var email = User.FindFirstValue(ClaimTypes.Email);
-        var result = await _authService.UpdateCurrentUserAddressAsync(addressDto, email);
-        return Ok(result);
-    }
-
 
     private ActionResult<AuthResponseDto> Unauthorized(object result)
     {

@@ -1,0 +1,20 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Shared
+{
+    public class NotificationDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string TimeAge { get; set; } = string.Empty; //  منذ خمس دقايق
+        public string NotificationType { get; set; } = string.Empty;
+        public bool IsRead { get; set; }
+
+
+    }
+}

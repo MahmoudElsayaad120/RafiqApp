@@ -10,8 +10,9 @@ namespace Domain.Contracts
     public interface IUnitOfWork
     {
         Task<int> SaveChangesAsync();
+        Task<int> CompleteAsync();
 
         // Generate Repository
-       IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>() where TEntity : BaseEntity<TKey>;
+        IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>() where TEntity : BaseEntity<TKey>;
     }
 }

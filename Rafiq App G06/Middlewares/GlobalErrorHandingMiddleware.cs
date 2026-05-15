@@ -14,22 +14,45 @@ namespace Rafiq_App_G06.Middlewares
             this.logger = logger;
         }
 
-       
-
         public async Task InvokeAsync(HttpContext context) 
         {
+            //try
+            //{
+            //    await next.Invoke(context);
+            //    if (context.Response.StatusCode == StatusCodes.Status404NotFound)
+            //    {
+            //        await HandingNotFoundEndPointAsync(context);
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    logger.LogError(ex, ex.Message);
+
+            //    await HandlingErrorAsync(context, ex);
+            //}
+
             try
             {
                 await next.Invoke(context);
-                if (context.Response.StatusCode == StatusCodes.Status404NotFound)
+
+                // بنتحقق إن الرد لم يبدأ بعد قبل معالجة الـ 404
+                if (!context.Response.HasStarted && context.Response.StatusCode == StatusCodes.Status404NotFound)
                 {
                     await HandingNotFoundEndPointAsync(context);
                 }
             }
             catch (Exception ex)
             {
+                // تسجيل الخطأ في الـ Log عشان نعرف سببه الحقيقي من الـ Console
                 logger.LogError(ex, ex.Message);
 
+                // لو السيرفر بدأ يبعت البيانات فعلاً، مينفعش نعدل الهيدرز أو نبعت رد جديد
+                if (context.Response.HasStarted)
+                {
+                    return;
+                }
+
+                // لو لسه مبعتناش حاجة، نبعت الـ Error الـ JSON العادي بتاعنا
                 await HandlingErrorAsync(context, ex);
             }
 
