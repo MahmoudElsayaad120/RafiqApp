@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -66,29 +67,6 @@ namespace Services
                 Email = user.Email,
                 Token = await GenerateJwtTokenAsync(user)
             };
-
-
-            //var user = await _context.Users
-            //    .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
-
-            //if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
-            //{
-            //    throw new UnauthorizedAccessException("Invalid email or password");
-            //}
-
-            //var token = GenerateJwtToken(user.Id, user.Email, user.Role);
-            //var expiresAt = DateTime.UtcNow.AddMinutes(
-            //    int.Parse(_configuration["JwtOptions:DurationInDays"] ?? "5")
-            //);
-
-            //return new AuthResponseDto
-            //{
-            //    Token = "This Will be Token",
-            //    Email = user.Email,
-            //    Name = user.DisplayName,
-            //    Role = user.Role,
-            //    ExpiresAt = expiresAt
-            //};
         }
 
         public async Task<UserResultDto> RegisterAsync(RegisterDto registerDto)
@@ -158,86 +136,14 @@ namespace Services
                 var errors =  result.Errors.Select(error => error.Description);
                 throw new Exception(errors.ToString());
             }
+
+            await SendOtpAsync(new SendOtpDto { Email = user.Email }); // إرسال OTP بعد التسجيل اوتوماتكيكي
             return new UserResultDto()
             {
                 DisplayName = user.DisplayName,
                 Email = user.Email,
                 Token = await GenerateJwtTokenAsync(user)
             };
-
-            //// Check if email already exists
-            //if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
-            //{
-            //    throw new InvalidOperationException("Email already exists");
-            //}
-
-            //// Hash password
-            ////var passwordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password);
-
-            //// Create user
-            //var user = new AppUser
-            //{
-            //    DisplayName = registerDto.Name,
-            //    Email = registerDto.Email
-            //};
-
-            //var createdUser = await _userManager.CreateAsync(user, registerDto.Password);
-
-            //await _context.SaveChangesAsync();
-
-            //// Create role-specific entity
-            //if (registerDto.Role == "Patient")
-            //{
-            //    var patient = new Patient
-            //    {
-            //        //UserId = user.Id,
-            //        Age = registerDto.Age,
-            //        Gender = registerDto.Gender
-            //    };
-
-            //    // add patient in db
-            //    _context2.Patients.Add(patient);
-
-            //    // add role to user
-            //    // check role
-            //    if (!await _roleManager.RoleExistsAsync("Patient"))
-            //        {
-            //            await _userManager.CreateAsync(new AppUser { Email = "Patient" });
-            //        }
-            //_userManager.AddToRoleAsync(user, "Patient");
-            //}
-            //else if (registerDto.Role == "Doctor")
-            //{
-            //    if (string.IsNullOrEmpty(registerDto.Specialization))
-            //        throw new InvalidOperationException("Specialization is required for doctors");
-
-            //    var doctor = new Doctor
-            //    {
-            //        //UserId = user.Id,
-            //        Specialization = registerDto.Specialization,
-            //        Description = registerDto.Description,
-            //        Price = registerDto.Price ?? 0
-            //    };
-            //    _context2.Doctors.Add(doctor);
-            //}
-
-            //await _context.SaveChangesAsync();
-
-            //// Generate token
-            //var token = GenerateJwtToken(user.Id, user.Email, user.Role);
-            //var expiresAt = DateTime.UtcNow.AddMinutes(
-            //    int.Parse(_configuration["JwtSettings:ExpirationInMinutes"] ?? "60")
-            //);
-
-            //return new AuthResponseDto
-            //{
-            //    Token = token,
-            //    Email = user.Email,
-            //    Name = user.Name,
-            //    //    Role = user.Role,
-            //    //    ExpiresAt = expiresAt
-            //    //};
-            //}
 
         }
 
@@ -269,36 +175,6 @@ namespace Services
                 );
             return new JwtSecurityTokenHandler().WriteToken(token);
 
-
-
-
-
-
-
-            //    var jwtSettings = _configuration.GetSection("JwtSettings");
-            //    var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
-            //    var issuer = jwtSettings["Issuer"] ?? "RafiqAPI";
-            //    var audience = jwtSettings["Audience"] ?? "RafiqUsers";
-
-            //    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            //    var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            //    var claims = new[]
-            //    {
-            //    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-            //    new Claim(ClaimTypes.Email, email),
-            //    new Claim(ClaimTypes.Role, role)
-            //};
-
-            //    var token = new JwtSecurityToken(
-            //        issuer: issuer,
-            //        audience: audience,
-            //        claims: claims,
-            //        expires: DateTime.UtcNow.AddMinutes(int.Parse(jwtSettings["ExpirationInMinutes"] ?? "60")),
-            //        signingCredentials: credentials
-            //    );
-
-            //    return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         public async Task<bool> CheckEmailExistsAsync(string email)
@@ -317,9 +193,58 @@ namespace Services
         }
 
 
-        //public Task<string> GenerateJwtTokenAsync(int userId, string email, string role)
-        //{
-        //    throw new NotImplementedException();
-        ////}
+        public async Task<bool> SendOtpAsync(SendOtpDto sendOtpDto)
+        {
+            var user = await _userManager.FindByEmailAsync(sendOtpDto.Email);
+            if (user is null) return false;
+
+            // 1. توليد كود عشوائي آمن ومضمون 4 أرقام دايماً
+            string otpCode = RandomNumberGenerator.GetInt32(1000, 10000).ToString();
+
+            // 2. حفظ الكود ووقت الصلاحية (60 دقيقة من الآن)
+            user.OtpCode = otpCode;
+            user.OtpExpiryTime = DateTime.Now.AddMinutes(60);
+
+            await _userManager.UpdateAsync(user);
+
+            // 3. إرسال الإيميل (اربطها هنا بخدمة الـ Email المعتمدة عندك)
+            try
+            {
+                // _emailService.SendEmail(user.Email, "رمز التحقق", $"كود التحقق الخاص بك هو: {otpCode}");
+
+                // للتيست في الـ Output Console
+                Console.WriteLine($"================ OTP Sent to {sendOtpDto.Email}: {otpCode} ================");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        } // جزء ال  OTP
+
+        public async Task<bool> VerifyOtpAsync(VerifyOtpDto verifyOtpDto)
+        {
+            var user = await _userManager.FindByEmailAsync(verifyOtpDto.Email);
+            if (user is null) return false;
+
+            // التحقق من صحة الكود والوقت
+            if (user.OtpCode == null ||
+                user.OtpCode != verifyOtpDto.Code ||
+                user.OtpExpiryTime < DateTime.Now)
+            {
+                return false; // الكود خطأ أو صلاحيته انتهت
+            }
+
+            // تصغير الحقول بعد التحقق الناجح لمنع استخدام الكود مرة أخرى
+            user.OtpCode = null;
+            user.OtpExpiryTime = null;
+
+            // تفعيل الحساب في Identity داتا بيز
+            user.EmailConfirmed = true;
+
+            await _userManager.UpdateAsync(user);
+            return true;
+        } // جزء ال  OTP
+
     }
 }

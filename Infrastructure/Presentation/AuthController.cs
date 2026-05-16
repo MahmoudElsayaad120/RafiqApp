@@ -1,12 +1,13 @@
+using System.Security.Claims;
+using Domain.Models.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Rafiq.Api.DTOs;
 using Rafiq.Api.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using Rafiq.Api.Services.Abstractions;
-using Microsoft.AspNetCore.Identity;
-using Domain.Models.Identity;
+using Shared;
 
 
 namespace Rafiq.Api.Controllers;
@@ -83,6 +84,31 @@ public class AuthController : ControllerBase
         var email = User.FindFirstValue(ClaimTypes.Email);
         var result = await _authService.GetCurrentUserAsync(email);
         return Ok(result);
+    }
+
+
+    [HttpPost("send-otp")]
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpDto sendOtpDto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var result = await _authService.SendOtpAsync(sendOtpDto);
+        if (!result)
+            return BadRequest(new { message = "??? ????? ?????? ???? ?????? ?? ?????? ??????????" });
+
+        return Ok(new { message = "?? ????? ??? ?????? ?????" });
+    }
+
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto verifyOtpDto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var isValid = await _authService.VerifyOtpAsync(verifyOtpDto);
+        if (!isValid)
+            return BadRequest(new { message = "The code you entered is incorrect or expired." }); // ??????? ?? ??? UI ??????
+
+        return Ok(new { message = "The code was successfully verified." });
     }
 
     private ActionResult<AuthResponseDto> Unauthorized(object result)

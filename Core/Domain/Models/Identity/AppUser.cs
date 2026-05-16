@@ -11,6 +11,9 @@ namespace Domain.Models.Identity
     {
         public string DisplayName { get; set; } = null!;
         public Address? Address { get; set; } = null!; // Navigation property [ONE]
-        
+
+        public string? OtpCode { get; set; }
+        public DateTime? OtpExpiryTime { get; set; }
+
     }
 }

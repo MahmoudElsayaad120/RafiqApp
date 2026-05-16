@@ -13,6 +13,7 @@ public interface IAuthService
    Task<string> GenerateJwtTokenAsync(AppUser user);
     Task<bool> CheckEmailExistsAsync(string email);
     Task<UserResultDto> GetCurrentUserAsync(string email);
-
+    Task<bool> SendOtpAsync(SendOtpDto sendOtpDto); // ??? ??  OTP
+    Task<bool> VerifyOtpAsync(VerifyOtpDto verifyOtpDto); // ??? ??  OTP
 
 }
