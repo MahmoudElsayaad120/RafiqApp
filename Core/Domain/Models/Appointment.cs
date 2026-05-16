@@ -26,11 +26,4 @@ namespace Domain.Models
         public Doctor Doctor { get; set; } = null!;
         public  Patient Patient { get; set; } = null!;
     }
-
-    //public enum AppointmentStatus
-    //{
-    //    Upcoming,   // قادم
-    //    Completed,  // مكتمل
-    //    Cancelled   // ملغي
-    //}
 }

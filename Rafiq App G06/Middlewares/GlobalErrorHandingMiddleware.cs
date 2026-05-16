@@ -16,20 +16,7 @@ namespace Rafiq_App_G06.Middlewares
 
         public async Task InvokeAsync(HttpContext context) 
         {
-            //try
-            //{
-            //    await next.Invoke(context);
-            //    if (context.Response.StatusCode == StatusCodes.Status404NotFound)
-            //    {
-            //        await HandingNotFoundEndPointAsync(context);
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    logger.LogError(ex, ex.Message);
-
-            //    await HandlingErrorAsync(context, ex);
-            //}
+           
 
             try
             {

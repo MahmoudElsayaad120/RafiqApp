@@ -12,6 +12,5 @@ namespace Domain.Models
         public string Sender { get; set; } = string.Empty; // "Patient" or "Bot"
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties
     }
 }

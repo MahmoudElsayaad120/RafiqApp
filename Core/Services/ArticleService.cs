@@ -17,12 +17,15 @@ namespace Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
 
+
+
+
+
         public ArticleService(IUnitOfWork unitOfWork, IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
         }
-
         public async Task<IEnumerable<ArticleDto>> GetDoctorArticlesAsync(int doctorId)
         {
             var baseUrl = _configuration["BaseUrl"];
@@ -40,9 +43,6 @@ namespace Services
             }).ToList();
 
         }
-
-
-
         public async Task AddArticleAsync(CreateArticleDto articleDto, int doctorId)
         {
             string savedPath = string.Empty;
@@ -83,8 +83,6 @@ namespace Services
             await _unitOfWork.GetRepository<Article, int>().AddAsync(article);
             await _unitOfWork.SaveChangesAsync();
         }
-       
-
         public async Task DeleteArticleAsync(int id)
         {
             var article = _unitOfWork.GetRepository<Article, int>();
