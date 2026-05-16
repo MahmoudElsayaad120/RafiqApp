@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -177,7 +178,6 @@ public class AppointmentsController : ControllerBase
         }
     }
 
-
     [HttpGet("details/{appointmentId}")]
     public async Task<ActionResult<AppointmentForPatientDetailsDto>> GetAppointmentDetails(int appointmentId)
     {
@@ -203,7 +203,6 @@ public class AppointmentsController : ControllerBase
         }
     }
 
-
     //[HttpGet("{id}/available-UpdateSlots")]
     //public async Task<IActionResult> UpdateSlots(int id, [FromQuery] DateTime date)
     //{
@@ -227,7 +226,6 @@ public class AppointmentsController : ControllerBase
     //    return BadRequest(new { message = "حدث خطأ أثناء الحجز" });
     //}
 
-
     [HttpPut("Update-book")] // استخدمنا Put لأننا بنحدث بيانات موجودة
     public async Task<IActionResult> UpdateBookAppointment([FromBody] UpdateBookAppointmentRequestDto request)
     {
@@ -242,6 +240,11 @@ public class AppointmentsController : ControllerBase
 
         return BadRequest(new { message = "فشل تحديث الموعد، تأكد من البيانات" });
     }
+
+
+
+
+
 
 
     [HttpPost("process-payment")]
@@ -281,8 +284,176 @@ public class AppointmentsController : ControllerBase
         return Ok(new { message = "تم إلغاء الحجز بنجاح" });
     }
 
+    [HttpGet("info")]
+    public async Task<IActionResult> GetProfileInfo()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-  
+        var result = await _appointmentService.GetUserProfileAsync(userId);
+        return result != null ? Ok(result) : NotFound("المريض غير مسجل في النظام");
+    }
+
+    [HttpPost("upload-record")]
+    public async Task<IActionResult> UploadRecord([FromForm] UploadRecordDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _appointmentService.UploadMedicalRecordAsync(userId, dto);
+        return result ? Ok(new { message = "تم الرفع بنجاح" }) : BadRequest("فشل الرفع، تأكد من بيانات المريض");
+    }
+
+    [HttpPut("update-profile")]
+    public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileDto dto)
+    {
+        // 1. بنجيب الـ Id (الـ Guid) بتاع اليوزر الحالي من الـ Token
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        // 2. بنباصي الـ UserId والـ DTO للـ Service عشان تعمل السحر بتاعها
+        var result = await _appointmentService.UpdateUserProfileAsync(userId, dto);
+
+        if (result)
+        {
+            // دي الرسالة اللي الـ Frontend مستنيها عشان يظهر الـ Modal الأخضر الجميل اللي بعتهولي
+            return Ok(new { message = "تم تحديث البيانات بنجاح" });
+        }
+
+        return BadRequest(new { message = "حدث خطأ أثناء تحديث البيانات، تأكد من أن البريد الإلكتروني غير مستخدم مسبقاً" });
+    }
+
+    [HttpPut("update-medical-profile")]
+    public async Task<IActionResult> UpdateMedicalProfile([FromBody] UpdateMedicalProfileDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _appointmentService.UpdateMedicalProfileAsync(userId, dto);
+
+        if (result)
+        {
+            // الرسالة دي هي اللي هتخلي الـ Frontend يعرض الـ Popup بتاع النجاح
+            return Ok(new { message = "تم تحديث البيانات بنجاح" });
+        }
+
+        return BadRequest(new { message = "حدث خطأ أثناء تحديث الملف الطبي" });
+    }
+
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        // بنجيب الـ Guid من الـ Token كالعادة
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _appointmentService.ChangeUserPasswordAsync(userId, dto);
+
+        if (result.Succeeded)
+        {
+            // الرسالة دي هي اللي هتخلي الـ Frontend يفتح الـ Popup الأزرق الجميل (تم تحديث كلمة المرور بنجاح)
+            return Ok(new { message = "تم تحديث كلمة المرور بنجاح" });
+        }
+
+        // لو الـ Identity رفض الباسورد (مثلاً القديم غلط، أو الجديد مش قوي كفاية)
+        var firstError = result.Errors.FirstOrDefault()?.Description ?? "فشل تغيير كلمة المرور";
+        return BadRequest(new { message = firstError });
+    }
+
+    [HttpGet("my-files")]
+    public async Task<IActionResult> GetMyFiles([FromQuery] string? fileType)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var files = await _appointmentService.GetPatientFilesAsync(userId, fileType);
+        return Ok(files);
+    }
+
+    [HttpPost("upload-file")]
+    public async Task<IActionResult> UploadFile([FromForm] UploadFileDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _appointmentService.UploadMedicalFileAsync(userId, dto);
+
+        if (result)
+        {
+            return Ok(new { message = "تم رفع الملف بنجاح" }); // دي اللي هتشغل الـ Popup بتاع رفع الملف
+        }
+
+        return BadRequest(new { message = "فشل في رفع الملف، يرجى المحاولة مرة أخرى" });
+    }
+
+    [HttpGet("Articles")]
+    public async Task<IActionResult> GetArticles([FromQuery] string? category, [FromQuery] string? search)
+    {
+        var result = await _appointmentService.GetAllArticlesAsync(category, search);
+        return Ok(result);
+    }
+
+    [HttpGet("Articles/{id}")]
+    public async Task<IActionResult> GetArticleDetails(int id)
+    {
+        var result = await _appointmentService.GetArticleDetailsAsync(id);
+        if (result == null) return NotFound(new { message = "المقال غير موجود" });
+        return Ok(result);
+    }
+
+    [HttpGet("saved")]
+    public async Task<IActionResult> GetSavedArticles()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _appointmentService.GetSavedArticlesAsync(userId);
+        return Ok(result);
+    }
+
+    [HttpPost("toggle-save")]
+    public async Task<IActionResult> ToggleSave([FromBody] SaveArticleActionDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var message = await _appointmentService.ToggleSaveArticleAsync(userId, dto.ArticleId);
+
+        return Ok(new { message = message });
+    }
+
+    [HttpGet("notifications")]
+    public async Task<IActionResult> GetMyNotifications()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _appointmentService.GetPatientNotificationsAsync(userId);
+        return Ok(result);
+    }
+
+    // 2. Endpoint لتحديث حالة الإشعارات إلى مقروءة
+    [HttpPut("mark-as-read")]
+    public async Task<IActionResult> MarkNotificationsAsRead()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        await _appointmentService.MarkAllAsReadAsync(userId);
+        return Ok(new { message = "تم تعيين الإشعارات كمقروءة" });
+    }
+
+
+
+
+
+
 
 
     private string? GetCurrentUserId()

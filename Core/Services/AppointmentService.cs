@@ -6,7 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Domain.Contracts;
 using Domain.Models;
+using Domain.Models.Identity;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Persistence;
@@ -24,12 +26,14 @@ namespace Services
         private readonly RafiqDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly UserManager<AppUser> _userManager;
 
-        public AppointmentService(RafiqDbContext context, IConfiguration configuration, IUnitOfWork unitOfWork )
+        public AppointmentService(RafiqDbContext context, IConfiguration configuration, IUnitOfWork unitOfWork, UserManager<AppUser> userManager)
         {
             _context = context;
             _configuration = configuration;
             _unitOfWork = unitOfWork;
+            _userManager = userManager;
         }
 
         //public async Task<AppointmentDto> BookAppointmentAsync(int patientId, CreateAppointmentDto createAppointmentDto)
@@ -440,6 +444,423 @@ namespace Services
             return result > 0;
         } // الغاء الحجز في ال Patient  الل بعد الدفع
 
-      
+
+        public async Task<UserProfileDto> GetUserProfileAsync(string identityUserId)
+        {
+            // بنجيب المريض اللي الـ UserId (الـ Guid) بتاعه بيطابق اللي جاي من التوكن
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return null;
+
+            var appointments = await _unitOfWork.GetRepository<Appointment, int>().GetAllAsync();
+            var count = appointments.Count(a => a.PatientId == patient.Id);
+
+            return new UserProfileDto
+            {
+                FullName = patient.Name, // من الجدول اللي بعتهولي (Ali, hema, etc.)
+                Age = 23,
+                AppointmentsCount = count
+            };
+        } // الملف الشخصي في ال Patient
+
+        public async Task<bool> UploadMedicalRecordAsync(string identityUserId, UploadRecordDto dto)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            var path = await SaveFileToLocal(dto.File);
+
+            var record = new MedicalRecord
+            {
+                Title = dto.Title,
+                FilePath = path,
+                PatientId = patient.Id // بنربط بالـ int (1, 2, 1002...)
+            };
+
+            await _unitOfWork.GetRepository<MedicalRecord, int>().AddAsync(record);
+            return await _unitOfWork.CompleteAsync() > 0;
+        } // رفع ملف طبي في ال Patient في صفحه الملف الشخصي
+
+
+        public async Task<bool> UpdateUserProfileAsync(string identityUserId, UpdateProfileDto dto)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            // نقل البيانات بأمان متوافق مع الـ Nullable
+            patient.Name = dto.Name;
+            patient.Age = dto.Age;       // هيقبل الـ int? عادي
+            patient.Gender = dto.Gender;   // هيقبل الـ string? عادي
+
+            // التليفون لو حابب تسيفه في الـ Patient برضه (لو ضفت العمود بعدين) 
+            // أو تسيبه يسمع في جدول الـ Identity بس زي ما عملنا بالـ UserManager
+
+            if (dto.Image != null)
+            {
+                patient.PictureUrl = await SaveFileToLocal(dto.Image);
+            }
+
+            _unitOfWork.GetRepository<Patient, int>().Update(patient);
+
+            // تحديث بيانات الـ Identity (الإيميل والتليفون)
+            var user = await _userManager.FindByIdAsync(identityUserId);
+            if (user != null)
+            {
+                user.Email = dto.Email;
+                user.UserName = dto.Email;
+                user.NormalizedEmail = dto.Email.ToUpper();
+                user.NormalizedUserName = dto.Email.ToUpper();
+                user.PhoneNumber = dto.PhoneNumber; // تسييف التليفون في جدول الـ Users الأساسي
+
+                var identityResult = await _userManager.UpdateAsync(user);
+                if (!identityResult.Succeeded) return false;
+            }
+
+            return await _unitOfWork.CompleteAsync() > 0;
+        } // تعديل الملف الشخصي في ال Patient
+
+
+        public async Task<bool> UpdateMedicalProfileAsync(string identityUserId, UpdateMedicalProfileDto dto)
+        {
+            // 1. بندور على المريض بالـ UserId الـ Guid كالعادة
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            // 2. بنحول لستة الأمراض لنص واحد مفصول بفاصلة عشان يتسيف في عمود واحد
+            if (dto.ChronicDiseases != null && dto.ChronicDiseases.Any())
+            {
+                patient.ChronicDiseases = string.Join(",", dto.ChronicDiseases);
+            }
+            else
+            {
+                patient.ChronicDiseases = "لا يوجد";
+            }
+
+            // 3. تحديث باقي البيانات الطبية
+            patient.Allergy = dto.Allergy;
+            patient.BloodType = dto.BloodType;
+            patient.Height = dto.Height;
+            patient.Weight = dto.Weight;
+
+            // 4. حفظ في الداتابيز
+            _unitOfWork.GetRepository<Patient, int>().Update(patient);
+            return await _unitOfWork.CompleteAsync() > 0;
+        } // تعديل الملف الطبي في ال Patient
+
+        public async Task<IdentityResult> ChangeUserPasswordAsync(string identityUserId, ChangePasswordDto dto)
+        {
+            // 1. هنجيب اليوزر من جدول الـ Identity الأساسي باستخدام الـ Guid
+            var user = await _userManager.FindByIdAsync(identityUserId);
+            if (user == null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "المستخدم غير موجود" });
+            }
+
+            // 2. بننادي ميثود الـ Identity الجاهزة وهي بتتكفل بالتشفير والمقارنة
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+
+            return result;
+        } // تغيير كلمة المرور في ال Patient
+
+        public async Task<List<MedicalFileResponseDto>> GetPatientFilesAsync(string identityUserId, string? fileType)
+        {
+            // الحصول على الـ PatientId أولاً
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return new List<MedicalFileResponseDto>();
+
+            var filesRepo = _unitOfWork.GetRepository<MedicalRecord, int>();
+            var allFiles = await filesRepo.GetAllAsync();
+
+            // فلترة الملفات الخاصة بالمريض، وفلترتها حسب النوع لو الـ Frontend طالب نوع معين (الكل، تحاليل، إلخ)
+            var query = allFiles.Where(f => f.PatientId == patient.Id);
+
+            if (!string.IsNullOrEmpty(fileType) && fileType != "الكل")
+            {
+                query = query.Where(f => f.FileType == fileType);
+            }
+
+            return query.Select(f => new MedicalFileResponseDto
+            {
+                Id = f.Id,
+                Title = f.Title,
+                FilePath = f.FilePath,
+                FileType = f.FileType,
+                // تنسيق التاريخ للغة العربية (مثال: ديسمبر 2025)
+                FormattedDate = f.CreatedAt.ToString("MMMM yyyy", new System.Globalization.CultureInfo("ar-EG")),
+                Notes = f.Notes
+            }).ToList();
+        } // رفع الملف الطبي في ال Patient
+
+        public async Task<bool> UploadMedicalFileAsync(string identityUserId, UploadFileDto dto)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            // حفظ الملف الفعلي على السيرفر وجلب المسار لـ تسييفه
+            string folderPath = "Files/MedicalDocuments";
+            string savedFilePath = await SaveFileToLocal(dto.File); // الميثود الجاهزة عندك لحفظ الملفات
+
+            // تحديد اسم افتراضي للملف بناءً على نوعه واسم المريض أو اسم الملف الأصلي
+            string documentTitle = dto.FileType + " - " + Path.GetFileNameWithoutExtension(dto.File.FileName);
+
+            var medicalFile = new MedicalRecord
+            {
+                Title = documentTitle,
+                FilePath = savedFilePath,
+                FileType = dto.FileType,
+                Notes = dto.Notes,
+                PatientId = patient.Id
+            };
+
+            await _unitOfWork.GetRepository<MedicalRecord, int>().AddAsync(medicalFile);
+            return await _unitOfWork.CompleteAsync() > 0;
+        } // رفع الملف الطبي في ال Patient
+
+
+        
+        public async Task<List<ArticleListDto>> GetAllArticlesAsync(string? category, string? searchKey)
+        {
+            var articlesRepo = _unitOfWork.GetRepository<Article, int>();
+            var articles = await articlesRepo.GetAllAsync(); // أو استخدم Include لو عندك
+
+            var query = articles.AsQueryable();
+
+            // فلترة بالتصنيف (الكل، تغذية، نصائح عامة)
+            if (!string.IsNullOrEmpty(category) && category != "جميع المقالات")
+            {
+                query = query.Where(a => a.Category == category);
+            }
+
+            // بحث بالكلمة في العنوان أو الوصف
+            if (!string.IsNullOrEmpty(searchKey))
+            {
+                query = query.Where(a => a.Title.Contains(searchKey) || a.ShortDescription.Contains(searchKey));
+            }
+
+            return query.Select(a => new ArticleListDto
+            {
+                Id = a.Id,
+                Title = a.Title,
+                ShortDescription = a.ShortDescription,
+                ImagePath = a.ImagePath,
+                Category = a.Category,
+                TimeAgo = GetTimeAgo(a.CreateAt) 
+            }).ToList();
+        }  // المقالات في ال Patient
+
+       
+        public async Task<ArticleDetailsDto> GetArticleDetailsAsync(int id)
+        {
+            var article = (await _unitOfWork.GetRepository<Article, int>().GetAllAsync())
+                           .FirstOrDefault(a => a.Id == id);
+
+            if (article == null) return null;
+
+            var doctor = (await _unitOfWork.GetRepository<Doctor, int>().GetAllAsync())
+                          .FirstOrDefault(d => d.Id == article.DoctorId);
+
+            // جلب مقالات ذات صلة من نفس الفئة باستثناء المقال الحالي (بحد أقصى 2 كالتصميم)
+            var allArticles = await _unitOfWork.GetRepository<Article, int>().GetAllAsync();
+            var related = allArticles
+                .Where(a => a.Category == article.Category && a.Id != id)
+                .Take(2)
+                .Select(a => new ArticleListDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    ShortDescription = a.ShortDescription,
+                    ImagePath = a.ImagePath,
+                    Category = a.Category,
+                    TimeAgo = GetTimeAgo(a.CreateAt)
+                }).ToList();
+
+            return new ArticleDetailsDto
+            {
+                Id = article.Id,
+                Title = article.Title,
+                Content = article.Content,
+                ImagePath = article.ImagePath,
+                Category = article.Category,
+                TimeAgo = GetTimeAgo(article.CreateAt),
+                DoctorName = doctor?.FullName ?? "طبيب رفيق",
+                DoctorImagePath = doctor?.ImagePath,
+                RelatedArticles = related
+            };
+        }  // تفاصيل المقال في ال Patient
+
+        public async Task<List<ArticleListDto>> GetSavedArticlesAsync(string identityUserId)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return new List<ArticleListDto>();
+
+            // هنجيب داتا جدول الربط ونعمل فلترة بـ Id المريض
+            var savedRepo = _unitOfWork.GetRepository<SavedArticle, int>();
+            var articlesRepo = _unitOfWork.GetRepository<Article, int>();
+
+            var savedRelations = (await savedRepo.GetAllAsync()).Where(s => s.PatientId == patient.Id).ToList();
+            var allArticles = await articlesRepo.GetAllAsync();
+
+            // نربط الجداول ببعض عشان نرجع تفاصيل المقال
+            var savedArticles = allArticles
+                .Where(a => savedRelations.Any(s => s.ArticleId == a.Id))
+                .Select(a => new ArticleListDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    ShortDescription = a.ShortDescription,
+                    ImagePath = a.ImagePath,
+                    Category = a.Category,
+                    TimeAgo = "منذ يومين" // الميثود المساعدة المرة اللي فاتت GetTimeAgo(a.CreatedAt)
+                }).ToList();
+
+            return savedArticles;
+        } // المقالات المحفوظة في ال Patient
+
+        // 2. حفظ أو إلغاء حفظ المقال (Toggle Save)
+        public async Task<string> ToggleSaveArticleAsync(string identityUserId, int articleId)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return "المريض غير مسجل";
+
+            var savedRepo = _unitOfWork.GetRepository<SavedArticle, int>();
+
+            // نشوف هل المقال ده اتحفظ قبل كده للمريض ده ولا لأ
+            var existingSave = (await savedRepo.GetAllAsync())
+                .FirstOrDefault(s => s.PatientId == patient.Id && s.ArticleId == articleId);
+
+            if (existingSave != null)
+            {
+                // لو موجود يبقى اليوزر عايز يلغي الحفظ (Unsave)
+                savedRepo.Delete(existingSave.Id);
+                await _unitOfWork.CompleteAsync();
+                return "تم إزالة المقال من المحفوظات";
+            }
+            else
+            {
+                // لو مش موجود يبقى اليوزر عايز يحفظه
+                var newSave = new SavedArticle
+                {
+                    PatientId = patient.Id,
+                    ArticleId = articleId
+                };
+                await savedRepo.AddAsync(newSave);
+                await _unitOfWork.CompleteAsync();
+                return "تم حفظ المقال بنجاح";
+            }
+        } // حفظ المقال في ال Patient
+
+
+        // 1. جلب كل إشعارات المريض الحالي مرتبة من الأحدث للأقدم
+        public async Task<List<NotificationResponseDto>> GetPatientNotificationsAsync(string identityUserId)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return new List<NotificationResponseDto>();
+
+            var notificationsRepo = _unitOfWork.GetRepository<Notification, int>();
+            var allNotifications = await notificationsRepo.GetAllAsync();
+
+            // فلترة الإشعارات الخاصة بالمريض وترتيبها تنازلياً حسب التاريخ
+            var patientNotifications = allNotifications
+                .Where(n => n.PatientId == patient.Id)
+                .OrderByDescending(n => n.CreateAt)
+                .Select(n => new NotificationResponseDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Message = n.Message,
+                    Type = n.Type,
+                    IsRead = n.IsRead,
+                    TimeAgo = GetNotificationTimeAgo(n.CreateAt) // ميثود حساب الوقت الرايقة
+                }).ToList();
+
+            return patientNotifications;
+        }
+
+        // 2. تحديث حالة الإشعارات لتصبح مقروءة بمجرد فتح الشاشة
+        public async Task<bool> MarkAllAsReadAsync(string identityUserId)
+        {
+            var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            var notificationsRepo = _unitOfWork.GetRepository<Notification, int>();
+            var unreadNotifications = (await notificationsRepo.GetAllAsync())
+                .Where(n => n.PatientId == patient.Id && !n.IsRead).ToList();
+
+            foreach (var notification in unreadNotifications)
+            {
+                notification.IsRead = true;
+                notificationsRepo.Update(notification);
+            }
+
+            return await _unitOfWork.CompleteAsync() > 0;
+        }
+
+       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // ميثود مساعدة لضبط الوقت بالظبط زي التصميم (قبل 15 دقيقة، قبل يوم...)
+        private string GetNotificationTimeAgo(DateTime createdAt)
+        {
+            var span = DateTime.UtcNow - createdAt;
+            if (span.TotalMinutes < 60) return $"قبل {Math.Max(1, (int)span.TotalMinutes)} دقيقة";
+            if (span.TotalHours < 24) return span.TotalHours >= 2 ? $"قبل {(int)span.TotalHours} ساعات" : "قبل ساعة";
+            if (span.TotalDays < 2) return "قبل يوم";
+            if (span.TotalDays < 3) return "قبل يومين";
+            return createdAt.ToString("yyyy/MM/dd");
+        }
+        // ميثود مساعدة بسيطة لتهيئة الوقت زي الـ UI
+        private string GetTimeAgo(DateTime dateTime)
+        {
+            var span = DateTime.UtcNow - dateTime;
+            if (span.Days >= 2) return "منذ يومين";
+            if (span.Days >= 1) return "منذ يوم";
+            return "مؤخراً";
+        }
+
+        private async Task<string> SaveFileToLocal(IFormFile file)
+        {
+            var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/Files/Records");
+            if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var filePath = Path.Combine(folderPath, fileName);
+
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(stream);
+
+            return $"/Files/Records/{fileName}";
+        } // ميثود لرفع الملف
     }
 }

@@ -30,6 +30,8 @@ namespace Persistence.Data
         public DbSet<ProfessionalFile> ProfessionalFiles { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Payment> Payments { get; set; }
+        public DbSet<MedicalRecord> MedicalRecords { get; set; }
+        public DbSet<SavedArticle> SavedArticles { get; set; }
 
 
 

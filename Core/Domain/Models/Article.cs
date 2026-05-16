@@ -12,6 +12,7 @@ namespace Domain.Models
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string ImagePath { get; set; } = string.Empty;
+        public string ShortDescription { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public DateTime CreateAt { get; set; } = DateTime.Now;
         public bool IsPublished { get; set; } = true;

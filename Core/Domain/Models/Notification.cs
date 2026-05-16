@@ -12,8 +12,11 @@ namespace Domain.Models
         public string Message { get; set; } = string.Empty;
         public DateTime CreateAt { get; set; } = DateTime.Now;
         public bool IsRead { get; set; } = false;
+        public string Type { get; set; }
 
         public string NotificationType { get; set; } = string.Empty;
         public string DoctorId { get; set; } = string.Empty;
+        public int PatientId { get; set; }
+        public Patient Patient { get; set; }
     }
 }
