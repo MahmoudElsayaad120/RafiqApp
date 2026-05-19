@@ -12,6 +12,7 @@ namespace Shared
     {
         [Required(ErrorMessage = "يرجى اختيار ملف")]
         public IFormFile File { get; set; } // الملف الفعلي (PDF, PNG, JPG)
+        public string FileName { get; set; }
 
         [Required(ErrorMessage = "نوع الملف مطلوب")]
         public string FileType { get; set; } // (تحاليل / اشعة / تقارير)

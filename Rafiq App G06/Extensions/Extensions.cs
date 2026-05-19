@@ -151,7 +151,7 @@ namespace Rafiq_App_G06.Extensions
 
         public static async Task<WebApplication> configureMiddlewares(this WebApplication app)
         {
-           await app.InitializeDatabaseAsync();
+            //await app.InitializeDatabaseAsync();  // دا خاص بالداتا بيز  sql server
             app.UseGlobalErrorHanding();
 
 

@@ -14,55 +14,42 @@ namespace Rafiq.Api.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
-    private readonly IDoctorService _doctorService;
-    private readonly ILogger<ChatController> _logger;
+    //private readonly IDoctorService _doctorService;
+    //private readonly ILogger<ChatController> _logger;
 
-    public ChatController(IChatService chatService, IDoctorService doctorService, ILogger<ChatController> logger)
+    public ChatController(IChatService chatService)
     {
         _chatService = chatService;
-        _doctorService = doctorService;
-        _logger = logger;
+        //_doctorService = doctorService;
+        //_logger = logger;
     }
 
-    [HttpPost("message")]
-    public async Task<ActionResult<ChatResponseDto>> SendMessage([FromBody] ChatRequestDto chatRequestDto)
+
+    [HttpPost("start")]
+    public async Task<IActionResult> StartChat()
     {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var response = await _chatService.ProcessMessageAsync(userId, chatRequestDto.Message);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing chat message");
-            return StatusCode(500, new { message = "An error occurred while processing your message" });
-        }
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var sessionId = await _chatService.StartNewChatAsync(userId);
+        if (sessionId == null) return BadRequest(new { message = "??? ??? ???????? ?? ????" });
+        return Ok(new { session_id = sessionId });
     }
 
-    [HttpGet("recommended-doctors")]
-    public async Task<ActionResult<IEnumerable<DoctorDto>>> GetRecommendedDoctors([FromQuery] string specialization)
+    [HttpGet("history")]
+    public async Task<IActionResult> GetHistory()
     {
-        try
-        {
-            if (string.IsNullOrEmpty(specialization))
-                return BadRequest(new { message = "Specialization is required" });
-
-            var doctors = await _doctorService.GetAllDoctorsAsync(specialization);
-            return Ok(doctors);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching recommended doctors");
-            return StatusCode(500, new { message = "An error occurred while fetching doctors" });
-        }
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var history = await _chatService.GetChatHistoryAsync(userId);
+        return Ok(history);
     }
 
-    private int GetCurrentUserId()
+    [HttpDelete("end")]
+    public async Task<IActionResult> EndChat()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (int.TryParse(userIdClaim, out var userId))
-            return userId;
-        throw new UnauthorizedAccessException("Invalid user ID");
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await _chatService.EndChatAsync(userId);
+        if (!result) return BadRequest(new { message = "??? ?? ????? ????????" });
+        return Ok(new { message = "?? ????? ???????? ???? ???? ???????? ?????" });
     }
+
+
 }

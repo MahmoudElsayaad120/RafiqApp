@@ -280,6 +280,8 @@ public class AppointmentsController : ControllerBase
             return BadRequest(new { message = "حدث خطأ أثناء إلغاء الحجز أو الحجز غير موجود" });
         }
 
+        //  هعمل  service   لما اكبسل يديني اشعار في التابل بتاعع الاشعارات
+
         // الرد اللي هيرجع للـ React عشان يظهر Modal "تم الإلغاء بنجاح"
         return Ok(new { message = "تم إلغاء الحجز بنجاح" });
     }
@@ -426,6 +428,17 @@ public class AppointmentsController : ControllerBase
         var message = await _appointmentService.ToggleSaveArticleAsync(userId, dto.ArticleId);
 
         return Ok(new { message = message });
+    }
+
+    [HttpPost("create")]
+    public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto dto)
+    {
+        if (dto == null) return BadRequest("بيانات الإشعار غير صالحة");
+
+        var result = await _appointmentService.CreateNotificationAsync(dto);
+        if (!result) return BadRequest(new { message = "فشل في إنشاء الإشعار" });
+
+        return Ok(new { message = "تم إنشاء الإشعار وإرساله بنجاح" });
     }
 
     [HttpGet("notifications")]

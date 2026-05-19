@@ -18,6 +18,7 @@ using Rafiq.Api.Services;
 using Rafiq.Api.Services.Abstractions;
 using Services.Specifications;
 using Shared;
+using Shared.Enums;
 
 namespace Services
 {
@@ -402,21 +403,13 @@ namespace Services
             {
                 AppointmentId = paymentRequestDto.AppointmentId,
                 Amount = amount,
-                Method = paymentRequestDto.PaymentMethod,
-                Status = paymentRequestDto.PaymentMethod == "Cash" ? "Pending" : "Completed", // الكاش بيبقى معلق والفيزا مكتملة وهمياً
-                TransactionId = paymentRequestDto.PaymentMethod == "Card" ? Guid.NewGuid().ToString() : null, // رقم عشوائي لو فيزا
+                Method = paymentRequestDto.PaymentMethod.ToString(),
+                Status = paymentRequestDto.PaymentMethod == PaymentMethod.Cash ? "Pending" : "Completed", // الكاش بيبقى معلق والفيزا مكتملة وهمياً
+                TransactionId = paymentRequestDto.PaymentMethod == PaymentMethod.Card ? Guid.NewGuid().ToString() : null, // رقم عشوائي لو فيزا
                 CreatedAt = DateTime.Now
             };
 
-            // 4. تحديث حالة الحجز بناءً على الصور
-            if (paymentRequestDto.PaymentMethod == "Cash")
-            {
-                appointment.Status = "Confirmed"; //
-            }
-            else
-            {
-                appointment.Status = "Paid"; //
-            }
+            appointment.Status = "Confirmed";
 
             // 5. حفظ في جدول الـ Payments والـ Appointments
             await _unitOfWork.GetRepository<Payment, int>().AddAsync(payment);
@@ -612,11 +605,11 @@ namespace Services
             string savedFilePath = await SaveFileToLocal(dto.File); // الميثود الجاهزة عندك لحفظ الملفات
 
             // تحديد اسم افتراضي للملف بناءً على نوعه واسم المريض أو اسم الملف الأصلي
-            string documentTitle = dto.FileType + " - " + Path.GetFileNameWithoutExtension(dto.File.FileName);
+            //string documentTitle = dto.FileType + " - " + Path.GetFileNameWithoutExtension(dto.File.FileName);
 
             var medicalFile = new MedicalRecord
             {
-                Title = documentTitle,
+                Title = dto.FileName,
                 FilePath = savedFilePath,
                 FileType = dto.FileType,
                 Notes = dto.Notes,
@@ -631,6 +624,7 @@ namespace Services
         
         public async Task<List<ArticleListDto>> GetAllArticlesAsync(string? category, string? searchKey)
         {
+            var baseUrl = _configuration["BaseUrl"];
             var articlesRepo = _unitOfWork.GetRepository<Article, int>();
             var articles = await articlesRepo.GetAllAsync(); // أو استخدم Include لو عندك
 
@@ -653,7 +647,7 @@ namespace Services
                 Id = a.Id,
                 Title = a.Title,
                 ShortDescription = a.ShortDescription,
-                ImagePath = a.ImagePath,
+                ImagePath = baseUrl + a.ImagePath,
                 Category = a.Category,
                 TimeAgo = GetTimeAgo(a.CreateAt) 
             }).ToList();
@@ -662,6 +656,7 @@ namespace Services
        
         public async Task<ArticleDetailsDto> GetArticleDetailsAsync(int id)
         {
+            var baseUrl = _configuration["BaseUrl"];
             var article = (await _unitOfWork.GetRepository<Article, int>().GetAllAsync())
                            .FirstOrDefault(a => a.Id == id);
 
@@ -690,17 +685,19 @@ namespace Services
                 Id = article.Id,
                 Title = article.Title,
                 Content = article.Content,
-                ImagePath = article.ImagePath,
+                ImagePath = baseUrl + article.ImagePath,
                 Category = article.Category,
                 TimeAgo = GetTimeAgo(article.CreateAt),
                 DoctorName = doctor?.FullName ?? "طبيب رفيق",
-                DoctorImagePath = doctor?.ImagePath,
+                DoctorImagePath = doctor != null ? baseUrl + doctor.ImagePath : null,
                 RelatedArticles = related
             };
         }  // تفاصيل المقال في ال Patient
 
         public async Task<List<ArticleListDto>> GetSavedArticlesAsync(string identityUserId)
         {
+            var baseUrl = _configuration["BaseUrl"];
+
             var patient = (await _unitOfWork.GetRepository<Patient, int>().GetAllAsync())
                            .FirstOrDefault(p => p.userId == identityUserId);
 
@@ -721,7 +718,7 @@ namespace Services
                     Id = a.Id,
                     Title = a.Title,
                     ShortDescription = a.ShortDescription,
-                    ImagePath = a.ImagePath,
+                    ImagePath = baseUrl + a.ImagePath,
                     Category = a.Category,
                     TimeAgo = "منذ يومين" // الميثود المساعدة المرة اللي فاتت GetTimeAgo(a.CreatedAt)
                 }).ToList();
@@ -765,6 +762,23 @@ namespace Services
         } // حفظ المقال في ال Patient
 
 
+        public async Task<bool> CreateNotificationAsync(CreateNotificationDto dto)
+        {
+            var notificationsRepo = _unitOfWork.GetRepository<Notification, int>();
+
+            var newNotification = new Notification
+            {
+                PatientId = dto.PatientId,
+                Title = dto.Title,
+                Message = dto.Message,
+                Type = dto.Type,
+                IsRead = false,
+                CreateAt = DateTime.UtcNow
+            };
+
+            await notificationsRepo.AddAsync(newNotification);
+            return await _unitOfWork.CompleteAsync() > 0;
+        }
         // 1. جلب كل إشعارات المريض الحالي مرتبة من الأحدث للأقدم
         public async Task<List<NotificationResponseDto>> GetPatientNotificationsAsync(string identityUserId)
         {
@@ -814,7 +828,9 @@ namespace Services
             return await _unitOfWork.CompleteAsync() > 0;
         }
 
-       
+     
+
+
 
 
 

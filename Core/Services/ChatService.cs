@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Json;
 using System.Text;
 using System.Threading.Tasks;
 using Domain.Contracts;
 using Domain.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Persistence;
 using Rafiq.Api.DTOs;
 using Rafiq.Api.Services;
-using Microsoft.EntityFrameworkCore;
 using Rafiq.Api.Services.Abstractions;
+using Shared;
 
 namespace Services
 {
@@ -26,107 +29,83 @@ namespace Services
 
 
 
-        public async Task<ChatResponseDto> ProcessMessageAsync(int userId, string message)
+        // 1. بدء شات جديد وتنبيه سيرفر الـ AI يصفّر الذاكرة
+        public async Task<string> StartNewChatAsync(string identityUserId)
         {
-            // Save patient message
-            await SaveChatMessageAsync(userId, message, "Patient");
+            var patient = (await unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
 
-            // Analyze symptoms and determine specialization
-            var analysis = AnalyzeSymptoms(message);
+            if (patient == null) return null;
 
-            // Generate reassuring reply
-            var reply = GenerateReassuringReply(analysis.UrgencyLevel, analysis.RecommendedSpecialization);
+            var sessionId = Guid.NewGuid().ToString();
 
-            // Save bot reply
-            await SaveChatMessageAsync(userId, reply, "Bot");
-
-            return new ChatResponseDto
+            // نضرب الـ URL بتاع الـ AI (بورت 8000 مثلاً) عشان يمسح الميموري للـ Session دي
+            using (var client = new HttpClient())
             {
-                Reply = reply,
-                RecommendedSpecialization = analysis.RecommendedSpecialization,
-                UrgencyLevel = analysis.UrgencyLevel
-            };
-        }
+                client.BaseAddress = new Uri("https://rifling-zap-tidings.ngrok-free.dev"); // حط الـ API URL بتاع الـ AI هنا
+                var response = await client.PostAsJsonAsync("/chat/new", new { session_id = sessionId });
 
-        public async Task SaveChatMessageAsync(int userId, string message, string sender)
-        {
-            var chatMessage = new ChatMessage
-            {
-                //UserId = userId,
-                Message = message,
-                Sender = sender,
-                CreatedAt = DateTime.UtcNow
-            };
-
-           var chat = unitOfWork.GetRepository<ChatMessage,int>().AddAsync(chatMessage);
-            await unitOfWork.SaveChangesAsync();
-        }
-
-        private (string RecommendedSpecialization, string UrgencyLevel) AnalyzeSymptoms(string message)
-        {
-            var lowerMessage = message.ToLowerInvariant();
-
-            // Determine urgency level
-            var urgencyKeywords = new Dictionary<string, string[]>
-        {
-            { "high", new[] { "chest pain", "difficulty breathing", "severe pain", "unconscious", "bleeding", "heart attack", "stroke" } },
-            { "medium", new[] { "fever", "persistent", "worsening", "pain", "infection" } },
-            { "low", new[] { "mild", "slight", "checkup", "routine" } }
-        };
-
-            var urgencyLevel = "low";
-            foreach (var kvp in urgencyKeywords)
-            {
-                if (kvp.Value.Any(keyword => lowerMessage.Contains(keyword)))
+                if (response.IsSuccessStatusCode)
                 {
-                    urgencyLevel = kvp.Key;
-                    break;
+                    var session = new ChatSession { SessionId = sessionId, PatientId = patient.Id };
+                    await unitOfWork.GetRepository<ChatSession, int>().AddAsync(session);
+                    await unitOfWork.CompleteAsync();
+                    return sessionId;
                 }
             }
+            return null;
+        }
 
-            // Determine specialization based on symptoms
-            var specializationKeywords = new Dictionary<string, string[]>
+        // 2. جلب الشات القديم للمريض
+        public async Task<List<ChatMessageDto>> GetChatHistoryAsync(string identityUserId)
         {
-            { "Cardiology", new[] { "chest", "heart", "cardiac", "blood pressure", "palpitation", "arrhythmia" } },
-            { "Neurology", new[] { "headache", "migraine", "seizure", "dizziness", "numbness", "memory", "brain" } },
-            { "Orthopedics", new[] { "bone", "joint", "fracture", "sprain", "back pain", "knee", "shoulder" } },
-            { "Dermatology", new[] { "skin", "rash", "acne", "eczema", "dermatitis", "mole", "hair loss" } },
-            { "Gastroenterology", new[] { "stomach", "abdominal", "digestion", "nausea", "vomiting", "diarrhea", "constipation" } },
-            { "Pulmonology", new[] { "breathing", "cough", "asthma", "lung", "respiratory", "shortness of breath" } },
-            { "Ophthalmology", new[] { "eye", "vision", "sight", "glaucoma", "cataract", "retina" } },
-            { "ENT", new[] { "ear", "nose", "throat", "hearing", "sinus", "tonsil" } },
-            { "Psychiatry", new[] { "anxiety", "depression", "mental", "stress", "mood", "psychiatric" } },
-            { "Urology", new[] { "urinary", "kidney", "bladder", "prostate", "urination" } },
-            { "Endocrinology", new[] { "diabetes", "thyroid", "hormone", "metabolism", "insulin" } },
-            { "Gynecology", new[] { "menstrual", "pregnancy", "gynecological", "pelvic", "ovarian" } }
-        };
+            var patient = (await unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
 
-            var recommendedSpecialization = "General Medicine"; // Default
+            if (patient == null) return new List<ChatMessageDto>();
 
-            foreach (var kvp in specializationKeywords)
+            var session = (await unitOfWork.GetRepository<ChatSession, int>().GetAllAsync())
+                           .FirstOrDefault(s => s.PatientId == patient.Id && s.IsActive);
+
+            if (session == null) return new List<ChatMessageDto>();
+
+            var messages = (await unitOfWork.GetRepository<ChatMessage, int>().GetAllAsync())
+                            .Where(m => m.ChatSessionId == session.Id)
+                            .OrderBy(m => m.CreatedAt)
+                            .Select(m => new ChatMessageDto
+                            {
+                                Sender = m.Sender,
+                                MessageText = m.MessageText,
+                                CreatedAt = m.CreatedAt
+                            }).ToList();
+
+            return messages;
+        }
+
+        // 3. إنهاء المحادثة وحذف كل البيانات (الـ Popup اللي بعتهولي)
+        public async Task<bool> EndChatAsync(string identityUserId)
+        {
+            var patient = (await unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                           .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            var session = (await unitOfWork.GetRepository<ChatSession, int>().GetAllAsync())
+                           .FirstOrDefault(s => s.PatientId == patient.Id && s.IsActive);
+
+            if (session == null) return false;
+
+            var messagesRepo = unitOfWork.GetRepository<ChatMessage, int>();
+            var messages = (await messagesRepo.GetAllAsync()).Where(m => m.ChatSessionId == session.Id).ToList();
+
+            foreach (var msg in messages)
             {
-                if (kvp.Value.Any(keyword => lowerMessage.Contains(keyword)))
-                {
-                    recommendedSpecialization = kvp.Key;
-                    break;
-                }
+                messagesRepo.Delete(msg.Id);
             }
 
-            return (recommendedSpecialization, urgencyLevel);
+            unitOfWork.GetRepository<ChatSession, int>().Delete(session.Id);
+            return await unitOfWork.CompleteAsync() > 0;
         }
 
-        private string GenerateReassuringReply(string urgencyLevel, string specialization)
-        {
-            var urgencyMessages = new Dictionary<string, string>
-        {
-            { "high", "I understand your concern. Based on your symptoms, I recommend seeking immediate medical attention. Please visit the nearest emergency room or call emergency services if your condition is severe." },
-            { "medium", "Thank you for sharing your symptoms. It's important to consult with a healthcare professional soon. I recommend scheduling an appointment with a specialist." },
-            { "low", "Thank you for reaching out. While your symptoms seem mild, it's always good to consult with a healthcare professional for proper evaluation." }
-        };
-
-            var baseMessage = urgencyMessages.GetValueOrDefault(urgencyLevel, urgencyMessages["low"]);
-
-            return $"{baseMessage} Based on your description, I recommend consulting with a {specialization} specialist. Would you like me to help you find available doctors in this specialization?";
-        }
     }
 }

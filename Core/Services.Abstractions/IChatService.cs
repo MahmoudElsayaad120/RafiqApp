@@ -1,9 +1,11 @@
 using Rafiq.Api.DTOs;
+using Shared;
 
 namespace Rafiq.Api.Services.Abstractions;
 
 public interface IChatService
 {
-    Task<ChatResponseDto> ProcessMessageAsync(int userId, string message);
-    Task SaveChatMessageAsync(int userId, string message, string sender);
+    Task<string> StartNewChatAsync(string identityUserId);
+    Task<List<ChatMessageDto>> GetChatHistoryAsync(string identityUserId);
+    Task<bool> EndChatAsync(string identityUserId);
 }

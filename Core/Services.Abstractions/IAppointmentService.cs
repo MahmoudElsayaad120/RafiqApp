@@ -25,7 +25,10 @@ public interface IAppointmentService
     Task<ArticleDetailsDto> GetArticleDetailsAsync(int id); // تفاصيل المقال في ال Patient
     Task<List<ArticleListDto>> GetSavedArticlesAsync(string identityUserId); // المقالات المحفوظة في ال Patient
     Task<string> ToggleSaveArticleAsync(string identityUserId, int articleId);
+    Task<bool> CreateNotificationAsync(CreateNotificationDto dto);// ميثود ال  ppost  بتاعت الاشعارات في ال Patient 
     Task<List<NotificationResponseDto>> GetPatientNotificationsAsync(string identityUserId); // الاشعارات في ال Patient
     Task<bool> MarkAllAsReadAsync(string identityUserId); // تعليم كل الاشعارات كمقروءة في ال Patient
+   
+
 
 }   

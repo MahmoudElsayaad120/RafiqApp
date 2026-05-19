@@ -8,9 +8,12 @@ namespace Domain.Models
 {
     public class ChatMessage : BaseEntity<int>
     {
-        public string Message { get; set; } = string.Empty;
-        public string Sender { get; set; } = string.Empty; // "Patient" or "Bot"
+        public string Sender { get; set; } // "User" أو "Rafeeq"
+        public string MessageText { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public int ChatSessionId { get; set; }
+        public ChatSession ChatSession { get; set; }
 
     }
 }

@@ -27,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="wwwroot\logs\" />
     <Folder Include="wwwroot\uploads\articles\" />
     <Folder Include="wwwroot\uploads\profiles\" />
   </ItemGroup>
