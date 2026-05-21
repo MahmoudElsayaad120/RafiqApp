@@ -190,11 +190,6 @@ public class DoctorsController : ControllerBase
         return Ok(result);
     }
 
-
-
-
-
-
     [HttpGet("TopDoctors")]
     public async Task<IActionResult> GetTopDoctors()
     {

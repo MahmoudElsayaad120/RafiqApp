@@ -9,8 +9,6 @@ namespace Domain.Models
 {
     public class DoctorAvailability : BaseEntity<int>
     {
-
-        //public int? Id { get; set; }
         public int? DoctorId { get; set; }
 
         // أضف هذا الحقل لدعم التاريخ المختار في الـ UI

@@ -32,6 +32,7 @@ namespace Persistence.Data
         public DbSet<Payment> Payments { get; set; }
         public DbSet<MedicalRecord> MedicalRecords { get; set; }
         public DbSet<SavedArticle> SavedArticles { get; set; }
+        public DbSet<ChatSession> ChatSessions { get; set; }
 
 
 
@@ -41,31 +42,6 @@ namespace Persistence.Data
         {
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(assemblyReference).Assembly);
             base.OnModelCreating(modelBuilder);
-
-            // User configuration
-            
-
-            // Patient configuration
-            //modelBuilder.Entity<Patient>(entity =>
-            //{
-            //    entity.HasKey(e => e.Id);
-            //    entity.HasOne(e => e.User)
-            //          .WithOne(e => e.Patient)
-            //          .HasForeignKey<Patient>(e => e.UserId)
-            //          .OnDelete(DeleteBehavior.Cascade);
-            //});
-
-            // Doctor configuration
-            //modelBuilder.Entity<Doctor>(entity =>
-            //{
-            //    entity.HasKey(e => e.Id);
-            //    entity.HasOne(e => e.User)
-            //          .WithOne(e => e.Doctor)
-            //          .HasForeignKey<Doctor>(e => e.UserId)
-            //          .OnDelete(DeleteBehavior.Cascade);
-            //    entity.Property(e => e.Specialization).IsRequired().HasMaxLength(255);
-            //    entity.Property(e => e.Price).HasPrecision(18, 2);
-            //});
 
             // DoctorAvailability configuration
             modelBuilder.Entity<DoctorAvailability>(entity =>
@@ -92,17 +68,6 @@ namespace Persistence.Data
                 entity.Property(e => e.Status).HasMaxLength(50);
                 entity.HasIndex(e => new { e.DoctorId, e.Date }).IsUnique();
             });
-
-            //// ChatMessage configuration
-            //modelBuilder.Entity<ChatMessage>(entity =>
-            //{
-            //    entity.HasKey(e => e.Id);
-            //    entity.HasOne(e => e.User)
-            //          .WithMany(e => e.ChatMessages)
-            //          .HasForeignKey(e => e.UserId)
-            //          .OnDelete(DeleteBehavior.Cascade);
-            //    entity.Property(e => e.Sender).HasMaxLength(50);
-            //});
           
           
 

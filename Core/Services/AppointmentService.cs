@@ -37,72 +37,6 @@ namespace Services
             _userManager = userManager;
         }
 
-        //public async Task<AppointmentDto> BookAppointmentAsync(int patientId, CreateAppointmentDto createAppointmentDto)
-        //{
-        //    // Check if doctor exists
-        //    var doctor = await _context.Doctors
-        //        .FirstOrDefaultAsync(d => d.Id == createAppointmentDto.DoctorId);
-
-        //    if (doctor == null)
-        //        throw new InvalidOperationException("Doctor not found");
-
-        //    // Check if patient exists
-        //    var patient = await _context.Patients
-        //        .FirstOrDefaultAsync(p => p.Id == patientId);
-
-        //    if (patient == null)
-        //        throw new InvalidOperationException("Patient not found");
-
-        //    // Check for conflicts - same doctor at the same date/time
-        //    var existingAppointment = await _context.Appointments
-        //        .FirstOrDefaultAsync(a => a.DoctorId == createAppointmentDto.DoctorId &&
-        //                                 a.Date.Date == createAppointmentDto.Date.Date &&
-        //                                 a.Date.Hour == createAppointmentDto.Date.Hour &&
-        //                                 a.Status != "Cancelled");
-
-        //    if (existingAppointment != null)
-        //        throw new InvalidOperationException("This time slot is already booked. Please choose another time.");
-
-        //    // Check if the appointment date is in the past
-        //    if (createAppointmentDto.Date < DateTime.UtcNow)
-        //        throw new InvalidOperationException("Cannot book appointments in the past");
-
-        //    // Check doctor availability
-        //    var dayOfWeek = createAppointmentDto.Date.DayOfWeek;
-        //    var appointmentTime = createAppointmentDto.Date.TimeOfDay;
-
-        //    var isAvailable = await _context.DoctorAvailabilities
-        //        .AnyAsync(a => a.DoctorId == createAppointmentDto.DoctorId &&
-        //                      appointmentTime >= a.FromTime &&
-        //                      appointmentTime <= a.ToTime);
-
-        //    if (!isAvailable)
-        //        throw new InvalidOperationException("Doctor is not available at this time");
-
-        //    // Create appointment
-        //    var appointment = new Appointment
-        //    {
-        //        DoctorId = createAppointmentDto.DoctorId,
-        //        PatientId = patientId,
-        //        Date = createAppointmentDto.Date,
-        //        Status = "Pending"
-        //    };
-
-        //    _context.Appointments.Add(appointment);
-        //    await _context.SaveChangesAsync();
-
-        //    return new AppointmentDto
-        //    {
-        //        Id = appointment.Id,
-        //        DoctorId = appointment.DoctorId,
-        //        DoctorName = doctor.FullName,
-        //        //DoctorSpecialization = doctor.Specialization,
-        //        DoctorSpecialization = doctor.Specialization.Name,
-        //        PatientId = appointment.PatientId,
-        //        Date = appointment.Date,
-        //        Status = appointment.Status
-        //    };
-        //}
         public async Task<IEnumerable<AppointmentDto>> GetPatientAppointmentsAsync(int patientId)
         {
             var baseUrl = _configuration["BaseUrl"];
@@ -169,54 +103,7 @@ namespace Services
                 Status = a.Status
             });
         }
-        //public async Task<bool> UpdateAppointmentStatusAsync(int appointmentId, string status)
-        //{
-        //    var appointment = await _context.Appointments.FindAsync(appointmentId);
-        //    if (appointment == null)
-        //        return false;
-
-        //    var validStatuses = new[] { "Pending", "Confirmed", "Cancelled", "Completed" };
-        //    if (!validStatuses.Contains(status))
-        //        throw new InvalidOperationException("Invalid status");
-
-        //    appointment.Status = status;
-        //    await _context.SaveChangesAsync();
-        //    return true;
-        //}
-
-        //public async Task<IEnumerable<AppointmentForPatientDto>> GetPatientAppointmentsAsync(string patientId, string? status = null)
-        //{
-        //    var baseUrl = _configuration["BaseUrl"];
-
-
-        //    // 1. جلب البيانات الأساسية (بدون تعقيد Repository)
-        //    var query = _context.Appointments
-        //        .Include(a => a.Doctor)
-        //        .ThenInclude(d => d.Specialization)
-        //        .Where(a => a.PatientId == int.Parse(patientId)); 
-
-        //    // 2. فلترة بسيطة لو الـ status موجود
-        //    if (!string.IsNullOrEmpty(status))
-        //    {
-        //        query = query.Where(a => a.Status == status);
-        //    }
-
-        //    var appointments = await query.ToListAsync();
-
-        //    // 3. تحويل الداتا للـ DTO اللي إنت بعتهولي
-        //    return appointments.Select(a => new AppointmentForPatientDto
-        //    {
-        //        Id = a.Id,
-        //        DoctorName = a.Doctor.FullName,
-        //        Specialization = a.Doctor.Specialization.Name,
-        //        ImagePath = $"{baseUrl}{a.Doctor.ImagePath}",
-        //        AppointmentDate = a.Date.ToString("dddd، dd MMMM yyyy", new System.Globalization.CultureInfo("ar-EG")),
-        //        AppointmentTime = a.Date.ToString("hh:mm tt", new System.Globalization.CultureInfo("ar-EG")),
-        //        Location = "طنطا - أول شارع البحر",
-        //        Price = 150,
-        //        Status = a.Status
-        //    });
-        //} // حجوزاتي القادمه والمتكمله
+       
         public async Task<IEnumerable<AppointmentForPatientDto>> GetPatientAppointmentsAsync(int patientId, string? status = null)
         {
             var baseUrl = _configuration["BaseUrl"] ?? "";
@@ -291,68 +178,7 @@ namespace Services
                 Status = appointment.Status ?? "Pending"
             };
         } // تفاصيل الحجز المكتمل في ال  patient 
-        //public async Task<IEnumerable<PatientForAvailableSlotDto>> UpdateAvailableSlotsAsync(int doctorId, DateTime date)
-        //{
-        //    // 1. نجيب مواعيد عمل الدكتور في اليوم ده (مثلاً السبت من 10 لـ 4)
-        //    var specs = new DoctorAvailabilitySpec(doctorId, date);
-        //    var availabilities = await _unitOfWork.GetRepository<DoctorAvailability, int>().GetAllAsync(specs);
-
-        //    var slots = availabilities.Select(a => new PatientForAvailableSlotDto()
-        //    {
-        //        Time = a.FromTime,
-        //        IsReserved = a.IsClosed
-        //    });
-
-
-
-
-        //    return slots;
-        //}  // تعديل الحجز في ال patient
-
-        //public async Task<bool> UpdateBookAppointmentAsync(int patientId, BookAppointmentRequestDto bookAppointment)
-        //{
-        //    // 1. بنحول الـ DTO لـ Model (Appointment) عشان الداتابيز متفهمش DTO
-        //    var appointment = new Appointment
-        //    {
-        //        DoctorId = bookAppointment.DoctorId,
-        //        PatientId = patientId,
-        //        // بنجمع التاريخ مع الساعة اللي اختارها
-        //        Date = bookAppointment.SelectedDate,
-        //        Status = "Pending",
-        //        CreateAt = DateTime.Now
-        //    };
-
-        //    // 2. بنستخدم الـ UnitOfWork عشان نضيف الحجز
-        //    await _unitOfWork.GetRepository<Appointment, int>().AddAsync(appointment);
-
-        //    // 3. بنعمل Save Changes
-        //    var result = await _unitOfWork.CompleteAsync();
-
-        //    return result > 0;
-        //} // تعديل الحجز في ال patient
-
-        //public async Task<IEnumerable<PatientForAvailableSlotDto>> UpdateAvailableSlotsAsync(int doctorId, DateTime date)
-        //{
-        //    // 1. جلب مواعيد عمل الدكتور من جدول التوافر (Availability)
-        //    var specs = new DoctorAvailabilitySpec(doctorId, date);
-        //    var availabilities = await _unitOfWork.GetRepository<DoctorAvailability, int>().GetAllAsync(specs);
-
-        //    // 2. جلب الحجوزات اللي تمت فعلاً عند الدكتور ده في اليوم ده
-        //    // لازم نفلتر عشان مبيحصلش "تضارب" في المواعيد
-        //    var bookedAppointments = await _unitOfWork.GetRepository<Appointment, int>()
-        //        .GetAllAsync(new AppointmentsByDoctorAndDateSpec(doctorId, date));
-
-        //    // 3. تحويل الداتا لـ DTO وفحص المتاح منها
-        //    var slots = availabilities.Select(a => new PatientForAvailableSlotDto()
-        //    {
-        //        Time = a.FromTime,
-        //        // الموعد يعتبر "محجوز" لو الدكتور قفل الخانة دي يدوياً 
-        //        // أو لو فيه حجز في الـ Database بنفس الوقت ده
-        //        IsReserved = a.IsClosed || bookedAppointments.Any(b => b.Date.TimeOfDay == a.FromTime)
-        //    });
-
-        //    return slots;
-        //}
+      
         public async Task<bool> UpdateBookAppointmentAsync(int patientId, UpdateBookAppointmentRequestDto request)
         {
             // 1. الوصول لجدول الحجوزات

@@ -15,14 +15,10 @@ namespace Domain.Models
         public string userId { get; set; }
         public string FullName { get; set; }
         public string Email { get; set; }
-        //public string Specialization { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal? Price { get; set; }
         public decimal Rate { get; set; } = 5;
-
         public string? Phone { get; set; }
-
-
         public bool IsAvailableToday { get; set; } // عشان كلمة "متوفر اليوم" اللي بالأخضر
 
 

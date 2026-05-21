@@ -29,27 +29,6 @@ public class AppointmentsController : ControllerBase
         _logger = logger;
     }
 
-    //[HttpPost]
-    //[Authorize(Roles = "Patient")]
-    //public async Task<ActionResult<AppointmentDto>> BookAppointment([FromBody] CreateAppointmentDto createAppointmentDto)
-    //{
-    //    try
-    //    {
-    //        var userId = GetCurrentUserId();
-    //        var patientId = await GetPatientIdFromUserIdAsync(userId);
-    //        var appointment = await _appointmentService.BookAppointmentAsync(patientId, createAppointmentDto);
-    //        return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, appointment);
-    //    }
-    //    catch (InvalidOperationException ex)
-    //    {
-    //        return BadRequest(new { message = ex.Message });
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Error booking appointment");
-    //        return StatusCode(500, new { message = "An error occurred while booking appointment" });
-    //    }
-    //}
 
     [HttpGet("my-appointments")]
     public async Task<ActionResult<IEnumerable<AppointmentDto>>> GetMyAppointments()
@@ -97,66 +76,7 @@ public class AppointmentsController : ControllerBase
         return Ok(new { message = "تم الإلغاء بنجاح" });
     }
 
-    //[HttpGet("{id}")]
-    //public async Task<ActionResult<AppointmentDto>> GetAppointment(int id)
-    //{
-    //    try
-    //    {
-    //        var userId = GetCurrentUserId();
-    //        var role = GetCurrentUserRole();
-
-    //        IEnumerable<AppointmentDto> appointments;
-
-    //        if (role == "Patient")
-    //        {
-    //            var patientId = await GetPatientIdFromUserIdAsync(userId);
-    //            appointments = await _appointmentService.GetPatientAppointmentsAsync(patientId);
-    //        }
-    //        else if (role == "Doctor")
-    //        {
-    //            var doctorId = await GetDoctorIdFromUserIdAsync(userId);
-    //            appointments = await _appointmentService.GetDoctorAppointmentsAsync(doctorId);
-    //        }
-    //        else
-    //        {
-    //            return Forbid();
-    //        }
-
-    //        var appointment = appointments.FirstOrDefault(a => a.Id == id);
-    //        if (appointment == null)
-    //            return NotFound(new { message = "Appointment not found" });
-
-    //        return Ok(appointment);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Error fetching appointment");
-    //        return StatusCode(500, new { message = "An error occurred while fetching appointment" });
-    //    }
-    //}
-
-    //[HttpPut("{id}/status")]
-    //[Authorize(Roles = "Doctor")]
-    //public async Task<ActionResult> UpdateAppointmentStatus(int id, [FromBody] UpdateAppointmentStatusDto dto)
-    //{
-    //    try
-    //    {
-    //        var success = await _appointmentService.UpdateAppointmentStatusAsync(id, dto.Status);
-    //        if (!success)
-    //            return NotFound(new { message = "Appointment not found" });
-
-    //        return Ok(new { message = "Appointment status updated successfully" });
-    //    }
-    //    catch (InvalidOperationException ex)
-    //    {
-    //        return BadRequest(new { message = ex.Message });
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Error updating appointment status");
-    //        return StatusCode(500, new { message = "An error occurred while updating appointment status" });
-    //    }
-    //}
+   
 
     [HttpGet("patient-bookings")] 
     public async Task<ActionResult<IEnumerable<AppointmentForPatientDto>>> GetPatientBookings([FromQuery] string? status)
@@ -203,29 +123,6 @@ public class AppointmentsController : ControllerBase
         }
     }
 
-    //[HttpGet("{id}/available-UpdateSlots")]
-    //public async Task<IActionResult> UpdateSlots(int id, [FromQuery] DateTime date)
-    //{
-    //    var slots = await _appointmentService.UpdateAvailableSlotsAsync(id, date);
-    //    return Ok(slots);
-    //}
-
-    //[HttpPost("Update-book")]
-    //public async Task<IActionResult> UpdateBookAppointment([FromBody] BookAppointmentRequestDto request)
-    //{
-    //    // المريض اللي داخل دلوقتي (مؤقتاً)
-    //    var userId = GetCurrentUserId();
-    //    var patientId = await GetPatientIdFromUserIdAsync(userId);
-
-
-    //    var isSuccess = await _appointmentService.UpdateBookAppointmentAsync(patientId, request);
-
-    //    if (isSuccess)
-    //        return Ok(new { message = "تم طلب الحجز بنجاح" });
-
-    //    return BadRequest(new { message = "حدث خطأ أثناء الحجز" });
-    //}
-
     [HttpPut("Update-book")] // استخدمنا Put لأننا بنحدث بيانات موجودة
     public async Task<IActionResult> UpdateBookAppointment([FromBody] UpdateBookAppointmentRequestDto request)
     {
@@ -240,12 +137,6 @@ public class AppointmentsController : ControllerBase
 
         return BadRequest(new { message = "فشل تحديث الموعد، تأكد من البيانات" });
     }
-
-
-
-
-
-
 
     [HttpPost("process-payment")]
     public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequestDto request)

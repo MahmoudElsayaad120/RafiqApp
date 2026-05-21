@@ -42,7 +42,7 @@ namespace Services
             // نضرب الـ URL بتاع الـ AI (بورت 8000 مثلاً) عشان يمسح الميموري للـ Session دي
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri("https://rifling-zap-tidings.ngrok-free.dev"); // حط الـ API URL بتاع الـ AI هنا
+                client.BaseAddress = new Uri("https://rafeeq-ai-dev-production.up.railway.app"); // حط الـ API URL بتاع الـ AI هنا
                 var response = await client.PostAsJsonAsync("/chat/new", new { session_id = sessionId });
 
                 if (response.IsSuccessStatusCode)
@@ -82,6 +82,33 @@ namespace Services
             return messages;
         }
 
+        public async Task<bool> SaveMessageAsync(string identityUserId, string sender, string messageText)
+        {
+            var patient = (await unitOfWork.GetRepository<Patient, int>().GetAllAsync())
+                          .FirstOrDefault(p => p.userId == identityUserId);
+
+            if (patient == null) return false;
+
+            // بنجيب الجلسة الفعالة حالياً للمريض ده
+            var session = (await unitOfWork.GetRepository<ChatSession, int>().GetAllAsync())
+                          .FirstOrDefault(s => s.PatientId == patient.Id && s.IsActive);
+
+            if (session == null) return false;
+
+            var messagesRepo = unitOfWork.GetRepository<ChatMessage, int>();
+
+            var newMessage = new ChatMessage
+            {
+                ChatSessionId = session.Id, // Foreign key المربوط بالـ ChatSession
+                Sender = sender,            // "Patient" أو "Ai"
+                MessageText = messageText,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await messagesRepo.AddAsync(newMessage);
+            return await unitOfWork.CompleteAsync() > 0;
+        }
+
         // 3. إنهاء المحادثة وحذف كل البيانات (الـ Popup اللي بعتهولي)
         public async Task<bool> EndChatAsync(string identityUserId)
         {
@@ -106,6 +133,7 @@ namespace Services
             unitOfWork.GetRepository<ChatSession, int>().Delete(session.Id);
             return await unitOfWork.CompleteAsync() > 0;
         }
+
 
     }
 }

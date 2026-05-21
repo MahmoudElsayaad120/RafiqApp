@@ -10,10 +10,8 @@ namespace Domain.Models
     {
         public int PatientId { get; set; }
         public Patient Patient { get; set; }
-
         public int ArticleId { get; set; }
         public Article Article { get; set; }
-
         public DateTime SavedAt { get; set; } = DateTime.UtcNow;
     }
 }

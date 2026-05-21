@@ -91,19 +91,6 @@ namespace Services
             });
         }
 
-        //public async Task<bool> DeleteAvailabilityAsync(int availabilityId, int doctorId)
-        //{
-        //    var availability = await _context.DoctorAvailabilities
-        //        .FirstOrDefaultAsync(a => a.Id == availabilityId && a.DoctorId == doctorId);
-
-        //    if (availability == null)
-        //        return false;
-
-        //    _context.DoctorAvailabilities.Remove(availability);
-        //    await _context.SaveChangesAsync();
-        //    return true;
-        //}
-
         public async Task<bool> DeleteFullDayAvailabilityAsync(int doctorId, DateOnly date)
         {
             // الحصول على يوم الأسبوع من التاريخ المرسل

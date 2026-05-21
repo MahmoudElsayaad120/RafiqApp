@@ -14,6 +14,8 @@ namespace Domain.Models
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+
+
         public Doctor Doctor { get; set; } = null!;
         public virtual Patient Patient { get; set; } = null!;
     }

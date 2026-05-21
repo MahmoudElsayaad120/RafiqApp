@@ -2,10 +2,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Rafiq.Api.DTOs;
 using Rafiq.Api.Services;
-using Microsoft.Extensions.Logging;
 using Rafiq.Api.Services.Abstractions;
+using Shared;
 namespace Rafiq.Api.Controllers;
 
 [ApiController]
@@ -14,14 +15,10 @@ namespace Rafiq.Api.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
-    //private readonly IDoctorService _doctorService;
-    //private readonly ILogger<ChatController> _logger;
 
     public ChatController(IChatService chatService)
     {
         _chatService = chatService;
-        //_doctorService = doctorService;
-        //_logger = logger;
     }
 
 
@@ -40,6 +37,18 @@ public class ChatController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var history = await _chatService.GetChatHistoryAsync(userId);
         return Ok(history);
+    }
+
+    [HttpPost("message")]
+    public async Task<IActionResult> SaveMessage([FromBody] ChatMessageDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // ??????? ????? ?????? ????? ??? ???? CreatedAt ????? ??? ?? ?????? ?? ??????? ??? ????? ?????
+        var result = await _chatService.SaveMessageAsync(userId, dto.Sender, dto.MessageText);
+
+        if (!result) return BadRequest(new { message = "??? ??? ???????" });
+        return Ok(new { message = "?? ??? ??????? ?????" });
     }
 
     [HttpDelete("end")]
