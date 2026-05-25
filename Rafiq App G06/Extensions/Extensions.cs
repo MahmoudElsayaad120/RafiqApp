@@ -64,7 +64,7 @@ namespace Rafiq_App_G06.Extensions
             {
                 config.AddPolicy("MyPolicy", options => 
                 {
-                    options.WithOrigins("http://localhost:5174")
+                    options.WithOrigins("http://localhost:5173")
                            .AllowAnyMethod()
                            .AllowAnyHeader()
                            .AllowCredentials();
